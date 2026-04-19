@@ -52,7 +52,7 @@ public class RoundServiceImpl implements RoundService {
     public void startRound(UUID roomId, int roundNumber) {
         GameRoomStatus newStatus = roundNumber == 1 ? GameRoomStatus.ROUND_1 : GameRoomStatus.ROUND_2;
         gameRoomRepository.update(GameRoomQuery.byId(roomId),
-                new GameRoomPatch(newStatus, null, null, Instant.now(), null));
+                new GameRoomPatch(newStatus, null, null, Instant.now(), null, null));
 
         // Фаза 1 commit: генерируем seed ДО выборов игроков.
         // seedHash публикуется игрокам — это доказательство честности.

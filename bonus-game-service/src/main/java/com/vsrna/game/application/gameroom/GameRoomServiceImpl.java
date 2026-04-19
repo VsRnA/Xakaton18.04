@@ -15,7 +15,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -71,7 +73,7 @@ public class GameRoomServiceImpl implements GameRoomService {
 
     @Override
     @Transactional
-    public GameRoomDetails joinRoom(UUID roomId, UUID userId) {
+    public GameRoomDetails joinRoom(UUID roomId, UUID userId, String displayName) {
         GameRoom room = gameRoomRepository.getForUpdate(GameRoomQuery.byId(roomId));
         GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
 
@@ -82,7 +84,7 @@ public class GameRoomServiceImpl implements GameRoomService {
             throw ApiException.badRequest("Room is full");
         }
 
-        GameParticipant participant = new GameParticipant(roomId, userId, false, config.getEntryFeeAmount());
+        GameParticipant participant = new GameParticipant(roomId, userId, false, displayName, config.getEntryFeeAmount());
         try {
             participantRepository.create(participant);
         } catch (DataIntegrityViolationException e) {
@@ -93,15 +95,20 @@ public class GameRoomServiceImpl implements GameRoomService {
         BigDecimal newPrize = room.getPrizePoolAmount().add(config.getEntryFeeAmount());
         room = gameRoomRepository.update(
                 GameRoomQuery.byId(roomId),
-                new GameRoomPatch(null, newCount, newPrize, null, null)
+                new GameRoomPatch(null, newCount, newPrize, null, null, null)
         );
 
         // Резервируем баланс внутри транзакции — если не хватает средств или запись не найдена,
         // транзакция откатится и пользователь не попадёт в комнату.
         balancePort.reserve(userId, config.getEntryFeeAmount(), roomId);
 
+        Instant waitTimerExpiresAt = null;
         if (newCount == 1) {
-            schedulerPort.scheduleWaitTimerExpiry(roomId);
+            waitTimerExpiresAt = schedulerPort.scheduleWaitTimerExpiry(roomId);
+            gameRoomRepository.update(
+                    GameRoomQuery.byId(roomId),
+                    new GameRoomPatch(null, null, null, null, null, waitTimerExpiresAt)
+            );
         } else if (newCount >= config.getMaxPlayers()) {
             schedulerPort.cancel(roomId, "fill-bots");
             roundService.startRound(roomId, 1);
@@ -111,12 +118,18 @@ public class GameRoomServiceImpl implements GameRoomService {
             ));
         }
 
-        notifierPort.publishRoomUpdate(roomId, Map.of(
-                "type", "ROOM_UPDATED",
-                "currentPlayers", newCount,
-                "prizePool", newPrize,
-                "winProbability", newCount > 0 ? 1.0 / newCount : 1.0
-        ));
+        Instant expiresAt = waitTimerExpiresAt != null
+                ? waitTimerExpiresAt
+                : room.getWaitTimerExpiresAt();
+        Map<String, Object> roomUpdate = new HashMap<>();
+        roomUpdate.put("type", "ROOM_UPDATED");
+        roomUpdate.put("currentPlayers", newCount);
+        roomUpdate.put("prizePool", newPrize);
+        roomUpdate.put("winProbability", newCount > 0 ? 1.0 / newCount : 1.0);
+        if (expiresAt != null) {
+            roomUpdate.put("waitExpiresAt", expiresAt.toEpochMilli());
+        }
+        notifierPort.publishRoomUpdate(roomId, roomUpdate);
 
         return new GameRoomDetails(room, config);
     }
@@ -140,7 +153,7 @@ public class GameRoomServiceImpl implements GameRoomService {
             BigDecimal botPrize = config.getEntryFeeAmount().multiply(BigDecimal.valueOf(botCount));
             BigDecimal newPrize = room.getPrizePoolAmount().add(botPrize);
             gameRoomRepository.update(GameRoomQuery.byId(roomId),
-                    new GameRoomPatch(null, newCount, newPrize, null, null));
+                    new GameRoomPatch(null, newCount, newPrize, null, null, null));
         }
 
         int total = participantRepository.count(GameParticipantQuery.byRoom(roomId));
@@ -169,6 +182,13 @@ public class GameRoomServiceImpl implements GameRoomService {
         return rooms.stream()
                 .map(r -> new GameRoomDetails(r, configByRoomId.get(r.getId())))
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GameParticipant> listParticipants(UUID roomId) {
+        gameRoomRepository.get(GameRoomQuery.byId(roomId));
+        return participantRepository.list(GameParticipantQuery.byRoom(roomId));
     }
 
     @Override

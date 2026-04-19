@@ -1,11 +1,13 @@
 package com.vsrna.game.presentation.dto.gameroom;
 
 import com.vsrna.game.domain.gameroom.GameRoomStatus;
+import com.vsrna.game.domain.participant.ParticipantStatus;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 public class GameRoomDto {
 
@@ -33,13 +35,24 @@ public class GameRoomDto {
             int currentPlayerCount,
             BigDecimal prizePoolAmount,
             Instant createdAt,
-            ConfigResponse config
+            ConfigResponse config,
+            @Schema(description = "Unix-миллисекунды окончания таймера ожидания. Null если таймер не активен", nullable = true)
+            Long waitExpiresAt
     ) {}
 
     public record JoinRoomResponse(
             UUID participantId,
             BigDecimal reservedAmount,
             int currentPlayerCount,
-            BigDecimal prizePoolAmount
+            BigDecimal prizePoolAmount,
+            @Schema(description = "Unix-миллисекунды окончания таймера ожидания. Null если комната заполнилась сразу", nullable = true)
+            Long waitExpiresAt
+    ) {}
+
+    public record ParticipantResponse(
+            UUID participantId,
+            String displayName,
+            boolean isBot,
+            ParticipantStatus status
     ) {}
 }

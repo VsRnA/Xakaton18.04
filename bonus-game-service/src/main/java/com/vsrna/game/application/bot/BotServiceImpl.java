@@ -36,7 +36,7 @@ public class BotServiceImpl implements BotService {
     public List<GameParticipant> createBotsForRoom(UUID roomId, int count, BigDecimal entryFeeAmount) {
         List<GameParticipant> bots = new ArrayList<>();
         for (int i = 1; i <= count; i++) {
-            GameParticipant bot = new GameParticipant(roomId, null, true, entryFeeAmount);
+            GameParticipant bot = new GameParticipant(roomId, null, true, "Бот " + i, entryFeeAmount);
             bots.add(participantRepository.create(bot));
         }
         return bots;

@@ -19,6 +19,7 @@ public class GameRoom {
     private Instant createdAt;
     private Instant startedAt;
     private Instant finishedAt;
+    private Instant waitTimerExpiresAt;
     private int currentPlayerCount;
     private BigDecimal prizePoolAmount;
 

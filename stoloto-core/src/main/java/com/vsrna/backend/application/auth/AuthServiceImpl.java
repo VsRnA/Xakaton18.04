@@ -20,7 +20,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthDto.LoginResponse login(AuthDto.LoginRequest request) {
         User user = userService.validateCredentials(request.phone(), request.password());
-        String token = jwtUtils.generateToken(user.getGuid(), user.getRoleKeywords());
+        String token = jwtUtils.generateToken(user.getGuid(), user.getRoleKeywords(), user.getUsername());
         return new AuthDto.LoginResponse(token, UserDto.UserResponse.from(user));
     }
 
@@ -32,7 +32,7 @@ public class AuthServiceImpl implements AuthService {
                 request.password(),
                 (String) null
         ));
-        String token = jwtUtils.generateToken(user.getGuid(), user.getRoleKeywords());
+        String token = jwtUtils.generateToken(user.getGuid(), user.getRoleKeywords(), user.getUsername());
         return new AuthDto.LoginResponse(token, UserDto.UserResponse.from(user));
     }
 }

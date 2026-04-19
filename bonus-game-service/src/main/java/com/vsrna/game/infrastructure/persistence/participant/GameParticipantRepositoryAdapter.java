@@ -62,6 +62,7 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
         if (patch.status() != null) entity.setStatus(patch.status());
         if (patch.advancedToFinal() != null) entity.setAdvancedToFinal(patch.advancedToFinal());
         if (patch.reservedPoints() != null) entity.setReservedPoints(patch.reservedPoints());
+        if (patch.displayName() != null) entity.setDisplayName(patch.displayName());
         return toDomain(jpa.save(entity));
     }
 
@@ -90,6 +91,7 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
         p.setGameRoomId(e.getGameRoomId());
         p.setUserId(e.getUserId());
         p.setBot(e.isBot());
+        p.setDisplayName(e.getDisplayName());
         p.setReservedPoints(e.getReservedPoints());
         p.setStatus(e.getStatus());
         p.setAdvancedToFinal(e.isAdvancedToFinal());
@@ -103,6 +105,7 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
         e.setGameRoomId(p.getGameRoomId());
         e.setUserId(p.getUserId());
         e.setBot(p.isBot());
+        e.setDisplayName(p.getDisplayName());
         e.setReservedPoints(p.getReservedPoints());
         e.setStatus(p.getStatus());
         e.setAdvancedToFinal(p.isAdvancedToFinal());

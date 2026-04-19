@@ -40,6 +40,9 @@ public class GameRoomJpa {
     @Column(name = "\"finishedAt\"")
     private Instant finishedAt;
 
+    @Column(name = "\"waitTimerExpiresAt\"")
+    private Instant waitTimerExpiresAt;
+
     @Column(name = "\"currentPlayerCount\"", nullable = false)
     private int currentPlayerCount;
 

@@ -35,6 +35,9 @@ public class GameParticipantJpa {
     @Column(name = "\"isBot\"", nullable = false)
     private boolean isBot;
 
+    @Column(name = "\"displayName\"", length = 100)
+    private String displayName;
+
     @Column(name = "\"reservedPoints\"", nullable = false, precision = 12, scale = 2)
     private BigDecimal reservedPoints;
 

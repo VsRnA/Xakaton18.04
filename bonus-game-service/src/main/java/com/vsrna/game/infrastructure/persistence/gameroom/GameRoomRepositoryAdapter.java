@@ -63,6 +63,7 @@ public class GameRoomRepositoryAdapter implements GameRoomRepository {
         if (patch.prizePoolAmount() != null) entity.setPrizePoolAmount(patch.prizePoolAmount());
         if (patch.startedAt() != null) entity.setStartedAt(patch.startedAt());
         if (patch.finishedAt() != null) entity.setFinishedAt(patch.finishedAt());
+        if (patch.waitTimerExpiresAt() != null) entity.setWaitTimerExpiresAt(patch.waitTimerExpiresAt());
         return toDomain(jpa.save(entity));
     }
 
@@ -89,6 +90,7 @@ public class GameRoomRepositoryAdapter implements GameRoomRepository {
         room.setCreatedAt(e.getCreatedAt());
         room.setStartedAt(e.getStartedAt());
         room.setFinishedAt(e.getFinishedAt());
+        room.setWaitTimerExpiresAt(e.getWaitTimerExpiresAt());
         room.setCurrentPlayerCount(e.getCurrentPlayerCount());
         room.setPrizePoolAmount(e.getPrizePoolAmount());
         return room;
@@ -101,6 +103,7 @@ public class GameRoomRepositoryAdapter implements GameRoomRepository {
         e.setCreatedByUserId(room.getCreatedByUserId());
         e.setStartedAt(room.getStartedAt());
         e.setFinishedAt(room.getFinishedAt());
+        e.setWaitTimerExpiresAt(room.getWaitTimerExpiresAt());
         e.setCurrentPlayerCount(room.getCurrentPlayerCount());
         e.setPrizePoolAmount(room.getPrizePoolAmount());
         return e;

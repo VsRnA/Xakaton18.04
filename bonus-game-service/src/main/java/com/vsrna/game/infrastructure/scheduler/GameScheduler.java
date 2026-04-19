@@ -30,10 +30,12 @@ public class GameScheduler implements GameSchedulerPort {
     @Value("${app.game.boost-window-seconds:5}")
     private int boostWindowSeconds;
 
-    public void scheduleWaitTimerExpiry(UUID roomId) {
+    public Instant scheduleWaitTimerExpiry(UUID roomId) {
+        Instant expiresAt = Instant.now().plusSeconds(waitTimerSeconds);
         schedule(FillWithBotsJob.class, "fill-bots-" + roomId,
                 new JobDataMap() {{ put("roomId", roomId.toString()); }},
                 waitTimerSeconds);
+        return expiresAt;
     }
 
     public void scheduleRoundEnd(UUID roomId, int roundNumber) {

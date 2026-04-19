@@ -18,6 +18,7 @@ import java.util.UUID;
 public class AuthTokenFilter extends OncePerRequestFilter {
 
     public static final String USER_ID_ATTR = "userId";
+    public static final String USERNAME_ATTR = "username";
 
     private final JwtUtils jwtUtils;
 
@@ -33,6 +34,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 Claims claims = jwtUtils.validateToken(rawToken);
                 UUID userId = UUID.fromString(claims.getSubject());
                 request.setAttribute(USER_ID_ATTR, userId);
+                request.setAttribute(USERNAME_ATTR, claims.get("username", String.class));
             } catch (Exception ignored) {
                 // невалидный токен — не устанавливаем атрибут, запрос продолжается без аутентификации
             }

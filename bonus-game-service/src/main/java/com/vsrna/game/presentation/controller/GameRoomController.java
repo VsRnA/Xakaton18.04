@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -92,16 +93,35 @@ public class GameRoomController {
     public GameRoomDto.JoinRoomResponse joinRoom(@PathVariable UUID roomId,
                                                   HttpServletRequest httpRequest) {
         UUID userId = requireAuth(httpRequest);
-        GameRoomDetails details = gameRoomService.joinRoom(roomId, userId);
+        String displayName = (String) httpRequest.getAttribute(AuthTokenFilter.USERNAME_ATTR);
+        GameRoomDetails details = gameRoomService.joinRoom(roomId, userId, displayName);
+        Instant waitTimerExpiresAt = details.room().getWaitTimerExpiresAt();
         return new GameRoomDto.JoinRoomResponse(
                 userId,
                 details.config().getEntryFeeAmount(),
                 details.room().getCurrentPlayerCount(),
-                details.room().getPrizePoolAmount()
+                details.room().getPrizePoolAmount(),
+                waitTimerExpiresAt != null ? waitTimerExpiresAt.toEpochMilli() : null
         );
     }
 
+    @Operation(summary = "Список участников комнаты")
+    @GetMapping("/{roomId}/participants")
+    public List<GameRoomDto.ParticipantResponse> listParticipants(@PathVariable UUID roomId,
+                                                                   HttpServletRequest httpRequest) {
+        requireAuth(httpRequest);
+        return gameRoomService.listParticipants(roomId).stream()
+                .map(p -> new GameRoomDto.ParticipantResponse(
+                        p.getId(),
+                        p.getDisplayName(),
+                        p.isBot(),
+                        p.getStatus()
+                ))
+                .toList();
+    }
+
     private GameRoomDto.GameRoomResponse toResponse(GameRoomDetails details) {
+        Instant waitTimerExpiresAt = details.room().getWaitTimerExpiresAt();
         return new GameRoomDto.GameRoomResponse(
                 details.room().getId(),
                 details.room().getStatus(),
@@ -115,7 +135,8 @@ public class GameRoomController {
                         details.config().getBoostCostAmount(),
                         details.config().isBoostEnabled(),
                         details.config().getMaxBarrelSelection()
-                )
+                ),
+                waitTimerExpiresAt != null ? waitTimerExpiresAt.toEpochMilli() : null
         );
     }
 

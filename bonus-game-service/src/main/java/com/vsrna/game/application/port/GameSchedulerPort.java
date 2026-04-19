@@ -1,5 +1,6 @@
 package com.vsrna.game.application.port;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -7,7 +8,7 @@ import java.util.UUID;
  * Application layer не зависит от Quartz напрямую.
  */
 public interface GameSchedulerPort {
-    void scheduleWaitTimerExpiry(UUID roomId);
+    Instant scheduleWaitTimerExpiry(UUID roomId);
     void scheduleRoundEnd(UUID roomId, int roundNumber);
     void scheduleBoostDecisionEnd(UUID roomId, int roundNumber);
     void scheduleBoostWindowEnd(UUID roomId, int roundNumber);
