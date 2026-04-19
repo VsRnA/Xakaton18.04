@@ -14,7 +14,8 @@ public class GameRoomDto {
             @NotNull @DecimalMin("0.01") BigDecimal entryFeeAmount,
             @NotNull @DecimalMin("1") @DecimalMax("100") BigDecimal winnerPayoutPercentage,
             @NotNull @DecimalMin("0") BigDecimal boostCostAmount,
-            boolean boostEnabled
+            boolean boostEnabled,
+            @Min(1) @Max(10) int maxBarrelSelection
     ) {}
 
     public record ConfigResponse(
@@ -22,7 +23,8 @@ public class GameRoomDto {
             BigDecimal entryFeeAmount,
             BigDecimal winnerPayoutPercentage,
             BigDecimal boostCostAmount,
-            boolean isBoostEnabled
+            boolean isBoostEnabled,
+            int maxBarrelSelection
     ) {}
 
     public record GameRoomResponse(

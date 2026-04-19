@@ -47,7 +47,8 @@ public class GameRoomController {
                 request.entryFeeAmount(),
                 request.winnerPayoutPercentage(),
                 request.boostCostAmount(),
-                request.boostEnabled()
+                request.boostEnabled(),
+                request.maxBarrelSelection()
         );
         return toResponse(gameRoomService.createRoom(command));
     }
@@ -112,7 +113,8 @@ public class GameRoomController {
                         details.config().getEntryFeeAmount(),
                         details.config().getWinnerPayoutPercentage(),
                         details.config().getBoostCostAmount(),
-                        details.config().isBoostEnabled()
+                        details.config().isBoostEnabled(),
+                        details.config().getMaxBarrelSelection()
                 )
         );
     }

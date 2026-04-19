@@ -49,8 +49,8 @@ public class PrizeServiceImpl implements PrizeService {
         GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
 
         RoundResult round2 = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, 2));
-        List<ParticipantRoundEntry> entries = entryRepository.list(
-                ParticipantRoundEntryQuery.byRoundResult(round2.getId()));
+        List<ParticipantRoundEntry> entries = new ArrayList<>(entryRepository.list(
+                ParticipantRoundEntryQuery.byRoundResult(round2.getId())));
 
         ParticipantRoundEntry winnerEntry = entries.stream()
                 .filter(e -> e.getRankInRound() != null && e.getRankInRound() == 1)
@@ -81,8 +81,27 @@ public class PrizeServiceImpl implements PrizeService {
         entries.sort(Comparator.comparingInt(e -> e.getRankInRound() != null ? e.getRankInRound() : 99));
         String winCriteria = RoundScoringUtils.determineWinCriteria(entries);
 
+        // Считаем статистику для аналитики
+        List<GameParticipant> allParticipants = participantRepository.list(GameParticipantQuery.byRoom(roomId));
+        int realPlayersCount = (int) allParticipants.stream().filter(p -> !p.isBot()).count();
+        int botCount = (int) allParticipants.stream().filter(GameParticipant::isBot).count();
+        BigDecimal realPlayersRevenue = config.getEntryFeeAmount()
+                .multiply(BigDecimal.valueOf(realPlayersCount));
+
+        // Буст-статистика: считаем по обоим раундам
+        RoundResult round1 = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, 1));
+        List<ParticipantRoundEntry> round1Entries = entryRepository.list(
+                ParticipantRoundEntryQuery.byRoundResult(round1.getId()));
+        long boostCountR1 = round1Entries.stream().filter(ParticipantRoundEntry::isBoostPurchased).count();
+        long boostCountR2 = entries.stream().filter(ParticipantRoundEntry::isBoostPurchased).count();
+        int boostUsedCount = (int) (boostCountR1 + boostCountR2);
+        BigDecimal boostRevenue = config.getBoostCostAmount().multiply(BigDecimal.valueOf(boostUsedCount));
+        boolean winnerUsedBoost = winnerEntry.isBoostPurchased();
+
         GameHistory history = new GameHistory(roomId, winnerUserId, winner.isBot(),
-                prizeAwarded, systemRevenue, winCriteria);
+                prizeAwarded, systemRevenue, winCriteria,
+                realPlayersCount, botCount, realPlayersRevenue,
+                boostRevenue, boostUsedCount, winnerUsedBoost);
         gameHistoryRepository.create(history);
 
         gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.finished(Instant.now()));

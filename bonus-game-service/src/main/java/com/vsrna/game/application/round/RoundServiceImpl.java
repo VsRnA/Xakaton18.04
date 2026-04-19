@@ -1,5 +1,6 @@
 package com.vsrna.game.application.round;
 
+import com.vsrna.game.application.bot.BotService;
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.port.GameSchedulerPort;
@@ -11,8 +12,8 @@ import com.vsrna.game.domain.history.GameHistory;
 import com.vsrna.game.domain.history.GameHistoryQuery;
 import com.vsrna.game.domain.history.GameHistoryRepository;
 import com.vsrna.game.domain.participant.*;
+import com.vsrna.game.domain.rng.RngCommitment;
 import com.vsrna.game.domain.rng.RngPort;
-import com.vsrna.game.domain.rng.RngResult;
 import com.vsrna.game.domain.round.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class RoundServiceImpl implements RoundService {
     private final GameNotifierPort notifierPort;
     private final PrizeService prizeService;
     private final GameHistoryRepository gameHistoryRepository;
+    private final BotService botService;
 
     @Override
     @Transactional
@@ -52,8 +54,15 @@ public class RoundServiceImpl implements RoundService {
         gameRoomRepository.update(GameRoomQuery.byId(roomId),
                 new GameRoomPatch(newStatus, null, null, Instant.now(), null));
 
+        // Фаза 1 commit: генерируем seed ДО выборов игроков.
+        // seedHash публикуется игрокам — это доказательство честности.
+        // rawSeed хранится в БД; раскрывается в resolveRound после выборов.
+        RngCommitment commitment = rngPort.commit(roomId, roundNumber);
         RoundResult roundResult = new RoundResult(roomId, roundNumber);
-        roundResultRepository.create(roundResult);
+        roundResult = roundResultRepository.create(roundResult);
+        roundResultRepository.update(
+                RoundResultQuery.byId(roundResult.getId()),
+                RoundResultPatch.commit(commitment.seedHash(), commitment.rawSeed()));
 
         schedulerPort.scheduleRoundEnd(roomId, roundNumber);
 
@@ -62,6 +71,7 @@ public class RoundServiceImpl implements RoundService {
                 "type", "ROUND_STARTED",
                 "roundNumber", roundNumber,
                 "barrelIds", barrels.stream().map(b -> b.getId().toString()).toList(),
+                "seedHash", commitment.seedHash(),   // ← commitment: игрок видит hash до выборов
                 "expiresAt", Instant.now().plusSeconds(30).toEpochMilli()
         ));
     }
@@ -129,8 +139,9 @@ public class RoundServiceImpl implements RoundService {
     @Transactional
     public void submitSelection(UUID roomId, UUID userId, int roundNumber,
                                 List<UUID> barrelIds, Instant timestamp) {
-        if (barrelIds == null || barrelIds.isEmpty() || barrelIds.size() > 5) {
-            throw ApiException.badRequest("Select between 1 and 5 barrels");
+        GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
+        if (barrelIds == null || barrelIds.isEmpty() || barrelIds.size() > config.getMaxBarrelSelection()) {
+            throw ApiException.badRequest("Select between 1 and " + config.getMaxBarrelSelection() + " barrels");
         }
 
         GameRoom room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
@@ -226,32 +237,35 @@ public class RoundServiceImpl implements RoundService {
     public void resolveRound(UUID roomId, int roundNumber) {
         log.info("Resolving round {} for room {}", roundNumber, roomId);
 
-        RngResult rngResult = rngPort.generate(roomId, roundNumber, 10);
-        List<Barrel> barrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
+        // Фаза 2 reveal: используем rawSeed, сохранённый в startRound (фаза commit).
+        // Детерминированно восстанавливаем веса — результат тот же, что был бы при генерации.
+        RoundResult roundResult = roundResultRepository.get(
+                RoundResultQuery.byRoomAndRound(roomId, roundNumber));
+        List<BigDecimal> weights = rngPort.reveal(roundResult.getRawSeed(), 10);
 
+        List<Barrel> barrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
         for (int i = 0; i < barrels.size(); i++) {
-            barrels.get(i).setWeight(rngResult.weights().get(i));
+            barrels.get(i).setWeight(weights.get(i));
         }
         barrelRepository.updateAll(BarrelQuery.byRoomAndRound(roomId, roundNumber), barrels);
 
-        RoundResult roundResult = roundResultRepository.get(
-                RoundResultQuery.byRoomAndRound(roomId, roundNumber));
         roundResultRepository.update(
                 RoundResultQuery.byId(roundResult.getId()),
-                RoundResultPatch.boostWindow(rngResult.seedHash(), rngResult.seedHex()));
+                RoundResultPatch.boostWindow());
 
         GameRoomStatus boostStatus = roundNumber == 1
                 ? GameRoomStatus.BOOST_WINDOW_1 : GameRoomStatus.BOOST_WINDOW_2;
         gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.status(boostStatus));
 
+        // Публикуем rawSeed — это reveal: игрок может проверить SHA256(rawSeed) == seedHash из ROUND_STARTED
         Map<String, Object> weightsPayload = new LinkedHashMap<>();
         weightsPayload.put("type", "WEIGHTS_REVEALED");
         weightsPayload.put("roundNumber", roundNumber);
         Map<String, Object> weightMap = new LinkedHashMap<>();
         for (Barrel b : barrels) weightMap.put(b.getId().toString(), b.getWeight());
         weightsPayload.put("barrelWeights", weightMap);
-        weightsPayload.put("seedHash", rngResult.seedHash());
-        weightsPayload.put("rawSeed", rngResult.seedHex());
+        weightsPayload.put("seedHash", roundResult.getSeedHash());
+        weightsPayload.put("rawSeed", roundResult.getRawSeed());   // ← reveal
         weightsPayload.put("expiresAt", Instant.now().plusSeconds(5).toEpochMilli());
         notifierPort.publishRoundEvent(roomId, weightsPayload);
 
@@ -269,8 +283,14 @@ public class RoundServiceImpl implements RoundService {
         Map<UUID, BigDecimal> barrelWeights = new HashMap<>();
         for (Barrel b : barrels) barrelWeights.put(b.getId(), b.getWeight());
 
-        List<ParticipantRoundEntry> entries = entryRepository.list(
-                ParticipantRoundEntryQuery.byRoundResult(roundResult.getId()));
+        // Боты выбирают бочки после раскрытия весов.
+        // В режиме защиты маржи (кумулятивный баланс системы < 0) — выбирают оптимально.
+        boolean protectionMode = gameHistoryRepository.getCumulativeSystemBalance()
+                .compareTo(java.math.BigDecimal.ZERO) < 0;
+        botService.submitBotSelections(roomId, roundNumber, protectionMode, barrelWeights);
+
+        List<ParticipantRoundEntry> entries = new ArrayList<>(entryRepository.list(
+                ParticipantRoundEntryQuery.byRoundResult(roundResult.getId())));
 
         // Загружаем все selections одним запросом (fix N+1)
         List<UUID> entryIds = entries.stream().map(ParticipantRoundEntry::getId).toList();

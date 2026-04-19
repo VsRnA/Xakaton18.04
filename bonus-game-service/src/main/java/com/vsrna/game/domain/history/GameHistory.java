@@ -23,13 +23,28 @@ public class GameHistory {
     private String winCriteria;
     private String summaryJson;
 
+    private int realPlayersCount;
+    private int botCount;
+    private BigDecimal realPlayersRevenue;
+    private BigDecimal boostRevenue;
+    private int boostUsedCount;
+    private boolean winnerUsedBoost;
+
     public GameHistory(UUID gameRoomId, UUID winnerUserId, boolean winnerIsBot,
-                       BigDecimal prizeAwarded, BigDecimal systemRevenue, String winCriteria) {
+                       BigDecimal prizeAwarded, BigDecimal systemRevenue, String winCriteria,
+                       int realPlayersCount, int botCount, BigDecimal realPlayersRevenue,
+                       BigDecimal boostRevenue, int boostUsedCount, boolean winnerUsedBoost) {
         this.gameRoomId = gameRoomId;
         this.winnerUserId = winnerUserId;
         this.winnerIsBot = winnerIsBot;
         this.prizeAwarded = prizeAwarded;
         this.systemRevenue = systemRevenue;
         this.winCriteria = winCriteria;
+        this.realPlayersCount = realPlayersCount;
+        this.botCount = botCount;
+        this.realPlayersRevenue = realPlayersRevenue;
+        this.boostRevenue = boostRevenue;
+        this.boostUsedCount = boostUsedCount;
+        this.winnerUsedBoost = winnerUsedBoost;
     }
 }

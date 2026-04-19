@@ -1,7 +1,7 @@
 package com.vsrna.game.infrastructure.rng;
 
+import com.vsrna.game.domain.rng.RngCommitment;
 import com.vsrna.game.domain.rng.RngPort;
-import com.vsrna.game.domain.rng.RngResult;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -25,14 +25,20 @@ public class RngServiceImpl implements RngPort {
 
     private final SecureRandom secureRandom = new SecureRandom();
 
+    /** Фаза 1: генерируем seed, возвращаем seedHash (публикуется) + rawSeed (хранится в БД). */
     @Override
-    public RngResult generate(UUID roomId, int roundNumber, int count) {
+    public RngCommitment commit(UUID roomId, int roundNumber) {
         byte[] seed = buildSeed(roomId, roundNumber);
         String seedHex = HexFormat.of().formatHex(seed);
         String seedHash = sha256Hex(seed);
+        return new RngCommitment(seedHex, seedHash);
+    }
 
-        List<BigDecimal> weights = generateWeights(seed, count);
-        return new RngResult(weights, seedHex, seedHash);
+    /** Фаза 2: детерминированно восстанавливаем веса из сохранённого seedHex. */
+    @Override
+    public List<BigDecimal> reveal(String seedHex, int count) {
+        byte[] seed = HexFormat.of().parseHex(seedHex);
+        return generateWeights(seed, count);
     }
 
     private byte[] buildSeed(UUID roomId, int roundNumber) {

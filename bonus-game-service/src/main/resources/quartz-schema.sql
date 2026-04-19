@@ -176,3 +176,23 @@ CREATE TABLE IF NOT EXISTS game.outbox_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbox_status ON game.outbox_events (status);
+
+CREATE TABLE IF NOT EXISTS game."gameHistory" (
+    id                UUID        NOT NULL DEFAULT gen_random_uuid(),
+    "gameRoomId"      UUID        NOT NULL,
+    "winnerUserId"    UUID,
+    "winnerIsBot"     BOOLEAN     NOT NULL DEFAULT false,
+    "prizeAwarded"    DECIMAL(12, 2),
+    "systemRevenue"   DECIMAL(12, 2),
+    "completedAt"     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "winCriteria"     VARCHAR(255),
+    "summaryJson"     TEXT,
+    "realPlayersCount" INT        NOT NULL DEFAULT 0,
+    "botCount"        INT         NOT NULL DEFAULT 0,
+    "realPlayersRevenue" DECIMAL(12, 2),
+    "boostRevenue"    DECIMAL(12, 2),
+    "boostUsedCount"  INT         NOT NULL DEFAULT 0,
+    "winnerUsedBoost" BOOLEAN     NOT NULL DEFAULT false,
+    PRIMARY KEY (id),
+    UNIQUE ("gameRoomId")
+);

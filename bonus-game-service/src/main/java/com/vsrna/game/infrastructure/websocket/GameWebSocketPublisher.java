@@ -52,11 +52,13 @@ public class GameWebSocketPublisher implements GameNotifierPort {
             Map<String, Object> envelope = new java.util.LinkedHashMap<>();
             envelope.put("destination", destination);
             if (userId != null) envelope.put("userId", userId);
-            envelope.putAll(payload);
+            envelope.put("payload", payload);
             String json = objectMapper.writeValueAsString(envelope);
             outboxRepository.save(new OutboxEvent(aggregateType, aggregateId, eventType, TOPIC, json));
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize WS event {}: {}", eventType, e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to save outbox event {}: {}", eventType, e.getMessage(), e);
         }
     }
 

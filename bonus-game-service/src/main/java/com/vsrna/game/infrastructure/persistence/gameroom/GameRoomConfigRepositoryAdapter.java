@@ -38,7 +38,8 @@ public class GameRoomConfigRepositoryAdapter implements GameRoomConfigRepository
                 e.getEntryFeeAmount(),
                 e.getWinnerPayoutPercentage(),
                 e.getBoostCostAmount(),
-                e.isBoostEnabled());
+                e.isBoostEnabled(),
+                e.getMaxBarrelSelection());
     }
 
     private GameRoomConfigJpa toJpa(GameRoomConfig config) {
@@ -49,6 +50,7 @@ public class GameRoomConfigRepositoryAdapter implements GameRoomConfigRepository
         e.setWinnerPayoutPercentage(config.getWinnerPayoutPercentage());
         e.setBoostCostAmount(config.getBoostCostAmount());
         e.setBoostEnabled(config.isBoostEnabled());
+        e.setMaxBarrelSelection(config.getMaxBarrelSelection());
         return e;
     }
 }

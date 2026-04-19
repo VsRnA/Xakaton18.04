@@ -14,9 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +47,8 @@ public class GameRoomServiceImpl implements GameRoomService {
                 command.entryFeeAmount(),
                 command.winnerPayoutPercentage(),
                 command.boostCostAmount(),
-                command.isBoostEnabled()
+                command.isBoostEnabled(),
+                command.maxBarrelSelection()
         );
         gameRoomConfigRepository.create(config);
 
@@ -98,6 +96,10 @@ public class GameRoomServiceImpl implements GameRoomService {
                 new GameRoomPatch(null, newCount, newPrize, null, null)
         );
 
+        // Резервируем баланс внутри транзакции — если не хватает средств или запись не найдена,
+        // транзакция откатится и пользователь не попадёт в комнату.
+        balancePort.reserve(userId, config.getEntryFeeAmount(), roomId);
+
         if (newCount == 1) {
             schedulerPort.scheduleWaitTimerExpiry(roomId);
         } else if (newCount >= config.getMaxPlayers()) {
@@ -116,24 +118,6 @@ public class GameRoomServiceImpl implements GameRoomService {
                 "winProbability", newCount > 0 ? 1.0 / newCount : 1.0
         ));
 
-        // HTTP-вызов выполняется после коммита транзакции:
-        // если коммит провалится — резерв не будет вызван (деньги не заблокируются).
-        // если HTTP провалится после успешного коммита — пользователь остаётся в комнате
-        // без реального резерва: логируем для ручного разбора / компенсирующей транзакции.
-        final UUID finalUserId = userId;
-        final BigDecimal finalEntryFee = config.getEntryFeeAmount();
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    balancePort.reserve(finalUserId, finalEntryFee, roomId);
-                } catch (Exception e) {
-                    log.error("COMPENSATION NEEDED: failed to reserve balance after commit " +
-                              "userId={}, roomId={}: {}", finalUserId, roomId, e.getMessage());
-                }
-            }
-        });
-
         return new GameRoomDetails(room, config);
     }
 
@@ -141,11 +125,14 @@ public class GameRoomServiceImpl implements GameRoomService {
     @Transactional
     public void fillWithBots(UUID roomId) {
         GameRoom room = gameRoomRepository.getForUpdate(GameRoomQuery.byId(roomId));
+        log.info("fillWithBots: room={} status={} players={}", roomId, room.getStatus(), room.getCurrentPlayerCount());
         if (room.getStatus() != GameRoomStatus.WAITING) {
+            log.info("fillWithBots: room {} is not WAITING ({}), skipping", roomId, room.getStatus());
             return;
         }
         GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
         int botCount = config.getMaxPlayers() - room.getCurrentPlayerCount();
+        log.info("fillWithBots: adding {} bots to room {}", botCount, roomId);
 
         if (botCount > 0) {
             botService.createBotsForRoom(roomId, botCount, config.getEntryFeeAmount());
@@ -157,12 +144,16 @@ public class GameRoomServiceImpl implements GameRoomService {
         }
 
         int total = participantRepository.count(GameParticipantQuery.byRoom(roomId));
+        log.info("fillWithBots: total participants={} in room {}", total, roomId);
         if (total >= 2) {
+            log.info("fillWithBots: starting round 1 for room {}", roomId);
             roundService.startRound(roomId, 1);
             notifierPort.publishRoomsUpdate(Map.of(
                     "type", "ROOM_STARTED",
                     "roomId", roomId.toString()
             ));
+        } else {
+            log.warn("fillWithBots: not enough participants ({}) to start room {}", total, roomId);
         }
     }
 

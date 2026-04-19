@@ -46,4 +46,22 @@ public class GameHistoryJpa {
 
     @Column(name = "\"summaryJson\"", columnDefinition = "TEXT")
     private String summaryJson;
+
+    @Column(name = "\"realPlayersCount\"", nullable = false)
+    private int realPlayersCount;
+
+    @Column(name = "\"botCount\"", nullable = false)
+    private int botCount;
+
+    @Column(name = "\"realPlayersRevenue\"", precision = 12, scale = 2)
+    private BigDecimal realPlayersRevenue;
+
+    @Column(name = "\"boostRevenue\"", precision = 12, scale = 2)
+    private BigDecimal boostRevenue;
+
+    @Column(name = "\"boostUsedCount\"", nullable = false)
+    private int boostUsedCount;
+
+    @Column(name = "\"winnerUsedBoost\"", nullable = false)
+    private boolean winnerUsedBoost;
 }

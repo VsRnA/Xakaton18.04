@@ -6,6 +6,7 @@ import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.history.GameHistory;
 import com.vsrna.game.presentation.dto.round.RoundDto;
 import com.vsrna.game.presentation.filter.AuthTokenFilter;
+import org.springframework.http.ResponseEntity;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -119,6 +120,43 @@ public class RoundController {
 
         return new RoundDto.RoundResultResponse(n, details.roundResult().getSeedHash(),
                 details.roundResult().getRawSeed(), scores, details.winnerId());
+    }
+
+    @Operation(
+            summary = "Верификация честности раунда (Provably Fair)",
+            description = """
+                    Позволяет игроку самостоятельно проверить, что результаты раунда не были подтасованы.
+
+                    **Схема проверки (commit-reveal):**
+                    1. В начале раунда (`ROUND_STARTED`) сервер публикует `seedHash = SHA256(rawSeed)`
+                    2. После окончания выборов (`WEIGHTS_REVEALED`) сервер раскрывает `rawSeed`
+                    3. Игрок проверяет: `SHA256(rawSeed) == seedHash` — это гарантирует,
+                       что веса бочек были зафиксированы ДО выборов и не менялись
+
+                    Этот эндпоинт возвращает оба значения и результат проверки.
+                    """
+    )
+    @GetMapping("/rounds/{n}/verify")
+    public ResponseEntity<RoundDto.VerifyRoundResponse> verifyRound(@PathVariable UUID roomId,
+                                                                      @PathVariable int n,
+                                                                      HttpServletRequest httpRequest) {
+        requireAuth(httpRequest);
+        RoundResultDetails details = roundService.getRoundResult(roomId, n);
+        String seedHash = details.roundResult().getSeedHash();
+        String rawSeed = details.roundResult().getRawSeed();
+        boolean valid = seedHash != null && rawSeed != null
+                && seedHash.equals(sha256Hex(rawSeed));
+        return ResponseEntity.ok(new RoundDto.VerifyRoundResponse(seedHash, rawSeed, valid));
+    }
+
+    private String sha256Hex(String input) {
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(java.util.HexFormat.of().parseHex(input));
+            return java.util.HexFormat.of().formatHex(hash);
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     @Operation(summary = "История игры в комнате")

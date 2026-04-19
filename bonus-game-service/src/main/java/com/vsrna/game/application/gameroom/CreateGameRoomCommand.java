@@ -9,6 +9,7 @@ public record CreateGameRoomCommand(
         BigDecimal entryFeeAmount,
         BigDecimal winnerPayoutPercentage,
         BigDecimal boostCostAmount,
-        boolean isBoostEnabled
+        boolean isBoostEnabled,
+        int maxBarrelSelection
 ) {
 }

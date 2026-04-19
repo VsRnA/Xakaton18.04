@@ -33,4 +33,7 @@ public class GameRoomConfigJpa {
 
     @Column(name = "\"isBoostEnabled\"", nullable = false)
     private boolean isBoostEnabled;
+
+    @Column(name = "\"maxBarrelSelection\"", nullable = false)
+    private int maxBarrelSelection;
 }
