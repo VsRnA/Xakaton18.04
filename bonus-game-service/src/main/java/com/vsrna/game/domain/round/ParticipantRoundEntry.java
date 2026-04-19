@@ -17,7 +17,7 @@ public class ParticipantRoundEntry {
     private UUID roundResultId;
     private UUID participantId;
     private boolean boostPurchased;
-    private UUID discardedBarrelId;
+    private UUID boostedBarrelId;
     private BigDecimal totalScore;
     private Instant selectionTimestamp;
     private int selectionCount;

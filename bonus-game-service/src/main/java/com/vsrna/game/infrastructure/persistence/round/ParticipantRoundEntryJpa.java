@@ -31,7 +31,7 @@ public class ParticipantRoundEntryJpa {
     private boolean boostPurchased;
 
     @Column(name = "\"discardedBarrelId\"")
-    private UUID discardedBarrelId;
+    private UUID boostedBarrelId;
 
     @Column(name = "\"totalScore\"", precision = 8, scale = 2)
     private BigDecimal totalScore;

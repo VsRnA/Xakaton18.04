@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record ParticipantRoundEntryPatch(
         Boolean boostPurchased,
-        UUID discardedBarrelId,
+        UUID boostedBarrelId,
         BigDecimal totalScore,
         Instant selectionTimestamp,
         Integer selectionCount,
@@ -16,8 +16,8 @@ public record ParticipantRoundEntryPatch(
         return new ParticipantRoundEntryPatch(true, null, null, null, null, null);
     }
 
-    public static ParticipantRoundEntryPatch discard(UUID discardedBarrelId) {
-        return new ParticipantRoundEntryPatch(null, discardedBarrelId, null, null, null, null);
+    public static ParticipantRoundEntryPatch applyBoost(UUID boostedBarrelId) {
+        return new ParticipantRoundEntryPatch(null, boostedBarrelId, null, null, null, null);
     }
 
     public static ParticipantRoundEntryPatch selection(Instant ts, int count) {

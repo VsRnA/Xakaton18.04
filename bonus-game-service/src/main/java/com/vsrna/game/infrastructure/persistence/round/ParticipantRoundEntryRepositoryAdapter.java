@@ -50,7 +50,7 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
     public ParticipantRoundEntry update(ParticipantRoundEntryQuery query, ParticipantRoundEntryPatch patch) {
         ParticipantRoundEntryJpa entity = findJpa(query);
         if (patch.boostPurchased() != null) entity.setBoostPurchased(patch.boostPurchased());
-        if (patch.discardedBarrelId() != null) entity.setDiscardedBarrelId(patch.discardedBarrelId());
+        if (patch.boostedBarrelId() != null) entity.setBoostedBarrelId(patch.boostedBarrelId());
         if (patch.totalScore() != null) entity.setTotalScore(patch.totalScore());
         if (patch.selectionTimestamp() != null) entity.setSelectionTimestamp(patch.selectionTimestamp());
         if (patch.selectionCount() != null) entity.setSelectionCount(patch.selectionCount());
@@ -86,7 +86,7 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
         entry.setRoundResultId(e.getRoundResultId());
         entry.setParticipantId(e.getParticipantId());
         entry.setBoostPurchased(e.isBoostPurchased());
-        entry.setDiscardedBarrelId(e.getDiscardedBarrelId());
+        entry.setBoostedBarrelId(e.getBoostedBarrelId());
         entry.setTotalScore(e.getTotalScore());
         entry.setSelectionTimestamp(e.getSelectionTimestamp());
         entry.setSelectionCount(e.getSelectionCount());
@@ -100,7 +100,7 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
         e.setRoundResultId(entry.getRoundResultId());
         e.setParticipantId(entry.getParticipantId());
         e.setBoostPurchased(entry.isBoostPurchased());
-        e.setDiscardedBarrelId(entry.getDiscardedBarrelId());
+        e.setBoostedBarrelId(entry.getBoostedBarrelId());
         e.setTotalScore(entry.getTotalScore());
         e.setSelectionTimestamp(entry.getSelectionTimestamp());
         e.setSelectionCount(entry.getSelectionCount());

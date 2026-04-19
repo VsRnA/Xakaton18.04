@@ -1,5 +1,7 @@
 package com.vsrna.backend.application.user;
 
+import com.vsrna.backend.domain.balance.UserBalance;
+import com.vsrna.backend.domain.balance.UserBalanceRepository;
 import com.vsrna.backend.domain.exception.ApiException;
 import com.vsrna.backend.domain.role.Role;
 import com.vsrna.backend.domain.role.RoleQuery;
@@ -14,6 +16,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +26,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final UserBalanceRepository balanceRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
     @Override
@@ -41,7 +45,9 @@ public class UserServiceImpl implements UserService {
         Role role = roleRepository.get(RoleQuery.byKeyword(roleKeyword));
         user.getRoles().add(role);
 
-        return userRepository.create(user);
+        User created = userRepository.create(user);
+        balanceRepository.create(new UserBalance(created.getGuid(), BigDecimal.valueOf(1000)));
+        return created;
     }
 
     @Override
@@ -77,6 +83,13 @@ public class UserServiceImpl implements UserService {
 
         if (request.patronymicName() != null) {
             user.setPatronymicName(request.patronymicName());
+        }
+
+        if (request.role() != null && !request.role().isBlank()) {
+            String roleKeyword = UserRole.fromString(request.role()).getKeyword();
+            Role role = roleRepository.get(RoleQuery.byKeyword(roleKeyword));
+            user.getRoles().clear();
+            user.getRoles().add(role);
         }
 
         return userRepository.create(user);

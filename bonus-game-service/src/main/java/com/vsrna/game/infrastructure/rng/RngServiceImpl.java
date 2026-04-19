@@ -5,7 +5,6 @@ import com.vsrna.game.domain.rng.RngPort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -19,9 +18,9 @@ import java.util.UUID;
 @Service
 public class RngServiceImpl implements RngPort {
 
-    private static final BigDecimal WEIGHT_MIN = new BigDecimal("-50.00");
-    private static final BigDecimal WEIGHT_RANGE = new BigDecimal("100.00");
-    private static final int SCALE = 2;
+    /** Веса бочек: целые числа от -10 до 10 включительно (21 значение). */
+    private static final int WEIGHT_MIN = -10;
+    private static final int WEIGHT_RANGE_SIZE = 21; // [-10, 10]
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -63,22 +62,14 @@ public class RngServiceImpl implements RngPort {
 
     private List<BigDecimal> generateWeights(byte[] seed, int count) {
         // Детерминированная генерация: XOR четырёх 8-байтовых чанков — используем все 32 байта.
-        // Ранее использовались только первые 8 байт, 75% энтропии терялось.
         long seedLong = readLong(seed, 0) ^ readLong(seed, 8) ^ readLong(seed, 16) ^ readLong(seed, 24);
         Random rng = new Random(seedLong);
 
         List<BigDecimal> weights = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            // [0, 100.00] → сдвиг на -50.00 → [-50.00, 50.00]
-            double raw = rng.nextDouble() * 100.0;
-            BigDecimal weight = BigDecimal.valueOf(raw)
-                    .setScale(SCALE, RoundingMode.HALF_UP)
-                    .add(WEIGHT_MIN);
-            // Clamp [-50.00, 50.00]
-            if (weight.compareTo(WEIGHT_MIN) < 0) weight = WEIGHT_MIN;
-            BigDecimal max = WEIGHT_MIN.add(WEIGHT_RANGE);
-            if (weight.compareTo(max) > 0) weight = max;
-            weights.add(weight);
+            // Целое число в диапазоне [-10, 10] (21 значение)
+            int intWeight = rng.nextInt(WEIGHT_RANGE_SIZE) + WEIGHT_MIN;
+            weights.add(BigDecimal.valueOf(intWeight));
         }
         return weights;
     }

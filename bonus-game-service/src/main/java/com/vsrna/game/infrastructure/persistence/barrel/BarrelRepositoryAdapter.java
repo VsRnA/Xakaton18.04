@@ -68,7 +68,7 @@ public class BarrelRepositoryAdapter implements BarrelRepository {
         b.setRoundNumber(e.getRoundNumber());
         b.setBarrelCode(e.getBarrelCode());
         b.setDisplayOrder(e.getDisplayOrder());
-        b.setWeight(e.getWeight());
+        b.setWeight(e.getWeight() != null ? e.getWeight().stripTrailingZeros() : null);
         return b;
     }
 

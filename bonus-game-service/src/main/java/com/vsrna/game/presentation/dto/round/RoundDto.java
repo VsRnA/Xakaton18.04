@@ -14,7 +14,7 @@ public class RoundDto {
             @NotEmpty @Size(min = 1, max = 5) List<UUID> barrelIds
     ) {}
 
-    public record DiscardBarrelRequest(
+    public record BoostBarrelRequest(
             @NotNull UUID barrelId
     ) {}
 

@@ -95,10 +95,16 @@ public class RoundServiceImpl implements RoundService {
             throw ApiException.badRequest("Boost is not enabled in this room");
         }
 
+        GameRoom room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
+        GameRoomStatus expectedDecisionStatus = roundNumber == 1
+                ? GameRoomStatus.BOOST_DECISION_1 : GameRoomStatus.BOOST_DECISION_2;
+        if (room.getStatus() != expectedDecisionStatus) {
+            throw ApiException.badRequest("Boost can only be purchased during the boost decision window");
+        }
+
         GameParticipant participant = participantRepository.get(
                 GameParticipantQuery.byRoomAndUser(roomId, userId));
 
-        GameRoom room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
         gameRoomRepository.update(GameRoomQuery.byId(roomId),
                 GameRoomPatch.prizePool(room.getPrizePoolAmount().add(config.getBoostCostAmount())));
 
@@ -199,7 +205,7 @@ public class RoundServiceImpl implements RoundService {
 
     @Override
     @Transactional
-    public void applyBoostDiscard(UUID roomId, UUID userId, int roundNumber, UUID discardedBarrelId) {
+    public void applyBoost(UUID roomId, UUID userId, int roundNumber, UUID boostedBarrelId) {
         GameRoom room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
         GameRoomStatus expectedBoostStatus = roundNumber == 1
                 ? GameRoomStatus.BOOST_WINDOW_1 : GameRoomStatus.BOOST_WINDOW_2;
@@ -222,14 +228,14 @@ public class RoundServiceImpl implements RoundService {
 
         List<ParticipantBarrelSelection> selections = selectionRepository.list(
                 ParticipantBarrelSelectionQuery.byEntry(entry.getId()));
-        boolean found = selections.stream().anyMatch(s -> s.getBarrelId().equals(discardedBarrelId));
+        boolean found = selections.stream().anyMatch(s -> s.getBarrelId().equals(boostedBarrelId));
         if (!found) {
             throw ApiException.badRequest("Barrel not in your selection");
         }
 
         entryRepository.update(
                 ParticipantRoundEntryQuery.byId(entry.getId()),
-                ParticipantRoundEntryPatch.discard(discardedBarrelId));
+                ParticipantRoundEntryPatch.applyBoost(boostedBarrelId));
     }
 
     @Override
@@ -249,15 +255,12 @@ public class RoundServiceImpl implements RoundService {
         }
         barrelRepository.updateAll(BarrelQuery.byRoomAndRound(roomId, roundNumber), barrels);
 
-        roundResultRepository.update(
-                RoundResultQuery.byId(roundResult.getId()),
-                RoundResultPatch.boostWindow());
+        GameRoomStatus decisionStatus = roundNumber == 1
+                ? GameRoomStatus.BOOST_DECISION_1 : GameRoomStatus.BOOST_DECISION_2;
+        gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.status(decisionStatus));
 
-        GameRoomStatus boostStatus = roundNumber == 1
-                ? GameRoomStatus.BOOST_WINDOW_1 : GameRoomStatus.BOOST_WINDOW_2;
-        gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.status(boostStatus));
-
-        // Публикуем rawSeed — это reveal: игрок может проверить SHA256(rawSeed) == seedHash из ROUND_STARTED
+        // Публикуем rawSeed — это reveal: игрок может проверить SHA256(rawSeed) == seedHash из ROUND_STARTED.
+        // Затем у игрока есть boost-decision-seconds секунд, чтобы решить, покупать ли буст.
         Map<String, Object> weightsPayload = new LinkedHashMap<>();
         weightsPayload.put("type", "WEIGHTS_REVEALED");
         weightsPayload.put("roundNumber", roundNumber);
@@ -266,8 +269,33 @@ public class RoundServiceImpl implements RoundService {
         weightsPayload.put("barrelWeights", weightMap);
         weightsPayload.put("seedHash", roundResult.getSeedHash());
         weightsPayload.put("rawSeed", roundResult.getRawSeed());   // ← reveal
+        weightsPayload.put("phase", "BOOST_DECISION");
         weightsPayload.put("expiresAt", Instant.now().plusSeconds(5).toEpochMilli());
         notifierPort.publishRoundEvent(roomId, weightsPayload);
+
+        schedulerPort.scheduleBoostDecisionEnd(roomId, roundNumber);
+    }
+
+    @Override
+    @Transactional
+    public void startBoostWindow(UUID roomId, int roundNumber) {
+        log.info("Starting boost window for room {} round {}", roomId, roundNumber);
+
+        RoundResult roundResult = roundResultRepository.get(
+                RoundResultQuery.byRoomAndRound(roomId, roundNumber));
+        roundResultRepository.update(
+                RoundResultQuery.byId(roundResult.getId()),
+                RoundResultPatch.boostWindow());
+
+        GameRoomStatus boostStatus = roundNumber == 1
+                ? GameRoomStatus.BOOST_WINDOW_1 : GameRoomStatus.BOOST_WINDOW_2;
+        gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.status(boostStatus));
+
+        notifierPort.publishRoundEvent(roomId, Map.of(
+                "type", "BOOST_WINDOW_STARTED",
+                "roundNumber", roundNumber,
+                "expiresAt", Instant.now().plusSeconds(5).toEpochMilli()
+        ));
 
         schedulerPort.scheduleBoostWindowEnd(roomId, roundNumber);
     }
@@ -302,9 +330,19 @@ public class RoundServiceImpl implements RoundService {
             List<ParticipantBarrelSelection> sels = selectionsByEntry.getOrDefault(entry.getId(), List.of());
             BigDecimal score = BigDecimal.ZERO;
             for (ParticipantBarrelSelection sel : sels) {
-                if (!sel.getBarrelId().equals(entry.getDiscardedBarrelId())) {
-                    BigDecimal w = barrelWeights.get(sel.getBarrelId());
-                    if (w != null) score = score.add(w);
+                BigDecimal w = barrelWeights.get(sel.getBarrelId());
+                if (w == null) continue;
+                if (sel.getBarrelId().equals(entry.getBoostedBarrelId())) {
+                    // Буст: отрицательный вес → меняем знак (добавляем |w|),
+                    //        положительный вес → умножаем на 1.5,
+                    //        нулевой вес → ничего не меняется.
+                    if (w.signum() < 0) {
+                        score = score.add(w.negate());
+                    } else if (w.signum() > 0) {
+                        score = score.add(w.multiply(new BigDecimal("1.5")));
+                    }
+                } else {
+                    score = score.add(w);
                 }
             }
             entry.setTotalScore(score);

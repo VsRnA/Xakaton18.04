@@ -41,11 +41,11 @@ public class RoundController {
     @Operation(
             summary = "Купить буст",
             description = """
-                    Покупает право выбросить одну бочку во время буст-окна (5 сек после `WEIGHTS_REVEALED`).
+                    Покупает буст во время фазы принятия решения (5 сек после `WEIGHTS_REVEALED`).
+                    Позволяет применить усиление к одной бочке в фазе `BOOST_WINDOW`.
                     Списание баланса происходит после коммита транзакции.
 
-                    **WS-события:** нет прямых. Эффект виден в `WEIGHTS_REVEALED` (буст-окно уже открыто)
-                    и в финальном счёте раунда.
+                    **WS-события:** нет прямых. После покупки ждите `BOOST_WINDOW_STARTED`.
                     """
     )
     @PostMapping("/rounds/{n}/boost")
@@ -86,22 +86,23 @@ public class RoundController {
     }
 
     @Operation(
-            summary = "Выбросить бочку (boost discard)",
+            summary = "Применить буст к бочке",
             description = """
-                    Применяет купленный буст: исключает одну бочку из итогового счёта.
-                    Доступно только в течение буст-окна (5 сек после `WEIGHTS_REVEALED`).
+                    Применяет купленный буст к выбранной бочке во время буст-окна (5 сек после `BOOST_WINDOW_STARTED`).
+                    Эффект: отрицательный вес → знак меняется на положительный; положительный вес → умножается на 1.5.
+                    Доступно только в фазе `BOOST_WINDOW`.
 
                     **WS-события:** нет прямых. Результат отразится в `ROUND_COMPLETED`.
                     """
     )
-    @PostMapping("/rounds/{n}/discard")
+    @PostMapping("/rounds/{n}/apply-boost")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void discardBarrel(@PathVariable UUID roomId,
-                              @PathVariable int n,
-                              @Valid @RequestBody RoundDto.DiscardBarrelRequest request,
-                              HttpServletRequest httpRequest) {
+    public void applyBoost(@PathVariable UUID roomId,
+                           @PathVariable int n,
+                           @Valid @RequestBody RoundDto.BoostBarrelRequest request,
+                           HttpServletRequest httpRequest) {
         UUID userId = requireAuth(httpRequest);
-        roundService.applyBoostDiscard(roomId, userId, n, request.barrelId());
+        roundService.applyBoost(roomId, userId, n, request.barrelId());
     }
 
     @Operation(summary = "Результат раунда")

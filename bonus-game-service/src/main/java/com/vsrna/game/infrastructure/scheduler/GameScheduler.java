@@ -24,6 +24,9 @@ public class GameScheduler implements GameSchedulerPort {
     @Value("${app.game.round-duration-seconds:30}")
     private int roundDurationSeconds;
 
+    @Value("${app.game.boost-decision-seconds:5}")
+    private int boostDecisionSeconds;
+
     @Value("${app.game.boost-window-seconds:5}")
     private int boostWindowSeconds;
 
@@ -38,6 +41,13 @@ public class GameScheduler implements GameSchedulerPort {
         data.put("roomId", roomId.toString());
         data.put("roundNumber", roundNumber);
         schedule(ResolveRoundJob.class, "resolve-round-" + roomId + "-" + roundNumber, data, roundDurationSeconds);
+    }
+
+    public void scheduleBoostDecisionEnd(UUID roomId, int roundNumber) {
+        JobDataMap data = new JobDataMap();
+        data.put("roomId", roomId.toString());
+        data.put("roundNumber", roundNumber);
+        schedule(BoostWindowStartJob.class, "boost-decision-end-" + roomId + "-" + roundNumber, data, boostDecisionSeconds);
     }
 
     public void scheduleBoostWindowEnd(UUID roomId, int roundNumber) {

@@ -24,7 +24,8 @@ public final class UserDto {
             @Size(min = 8, max = 72) String password,
             @Size(max = 100) String name,
             @Size(max = 100) String lastName,
-            @Size(max = 100) String patronymicName
+            @Size(max = 100) String patronymicName,
+            @Pattern(regexp = "^(admin|user)$") String role
     ) {}
 
     public record UserResponse(
