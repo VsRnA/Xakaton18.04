@@ -53,7 +53,7 @@ public class PrizeServiceImpl implements PrizeService {
                 ParticipantRoundEntryQuery.byRoundResult(round2.getId())));
 
         ParticipantRoundEntry winnerEntry = entries.stream()
-                .filter(e -> e.getRankInRound() != null && e.getRankInRound() == 1)
+                .filter(entry -> entry.getRankInRound() != null && entry.getRankInRound() == 1)
                 .findFirst()
                 .orElseThrow(() -> ApiException.internal("No winner found for room " + roomId));
 
@@ -68,7 +68,7 @@ public class PrizeServiceImpl implements PrizeService {
         BigDecimal systemRevenue;
         UUID winnerUserId = winner.isBot() ? null : winner.getUserId();
 
-        if (!winner.isBot() && winner.getUserId() != null) {
+        if (winner.isRealPlayer()) {
             BigDecimal winnerShare = config.getWinnerPayoutPercentage()
                     .divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
             prizeAwarded = prizePool.multiply(winnerShare).setScale(2, RoundingMode.HALF_UP);
@@ -81,14 +81,12 @@ public class PrizeServiceImpl implements PrizeService {
         entries.sort(Comparator.comparingInt(e -> e.getRankInRound() != null ? e.getRankInRound() : 99));
         String winCriteria = RoundScoringUtils.determineWinCriteria(entries);
 
-        // Считаем статистику для аналитики
         List<GameParticipant> allParticipants = participantRepository.list(GameParticipantQuery.byRoom(roomId));
-        int realPlayersCount = (int) allParticipants.stream().filter(p -> !p.isBot()).count();
+        int realPlayersCount = (int) allParticipants.stream().filter(participant -> !participant.isBot()).count();
         int botCount = (int) allParticipants.stream().filter(GameParticipant::isBot).count();
         BigDecimal realPlayersRevenue = config.getEntryFeeAmount()
                 .multiply(BigDecimal.valueOf(realPlayersCount));
 
-        // Буст-статистика: считаем по обоим раундам
         RoundResult round1 = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, 1));
         List<ParticipantRoundEntry> round1Entries = entryRepository.list(
                 ParticipantRoundEntryQuery.byRoundResult(round1.getId()));
@@ -127,26 +125,23 @@ public class PrizeServiceImpl implements PrizeService {
 
         log.info("Room {} finished. Winner: {}, prize: {}", roomId, winner.getId(), prizeAwarded);
 
-        // Все HTTP-вызовы к stoloto-core — после коммита результата игры в БД.
-        // Порядок: сначала вернуть резерв финалистам, потом зачислить приз победителю.
-        // Каждый вызов логируется независимо для ручного разбора при сбое.
         final GameParticipant finalWinner = winner;
         final BigDecimal finalPrizeAwarded = prizeAwarded;
         final List<GameParticipant> finalistsCopy = new ArrayList<>(finalists);
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                for (GameParticipant p : finalistsCopy) {
-                    if (!p.isBot() && p.getUserId() != null) {
+                for (GameParticipant participant : finalistsCopy) {
+                    if (participant.isRealPlayer()) {
                         try {
-                            balancePort.release(p.getUserId(), p.getReservedPoints(), roomId);
+                            balancePort.release(participant.getUserId(), participant.getReservedPoints(), roomId);
                         } catch (Exception e) {
                             log.error("COMPENSATION NEEDED: failed to release balance for finalist " +
-                                      "userId={}, roomId={}: {}", p.getUserId(), roomId, e.getMessage());
+                                      "userId={}, roomId={}: {}", participant.getUserId(), roomId, e.getMessage());
                         }
                     }
                 }
-                if (!finalWinner.isBot() && finalWinner.getUserId() != null) {
+                if (finalWinner.isRealPlayer()) {
                     try {
                         balancePort.award(finalWinner.getUserId(), finalPrizeAwarded, roomId);
                     } catch (Exception e) {

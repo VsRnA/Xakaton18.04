@@ -53,33 +53,33 @@ public class BarrelRepositoryAdapter implements BarrelRepository {
     @Transactional
     public int updateAll(BarrelQuery query, List<Barrel> barrels) {
         int updated = 0;
-        for (Barrel b : barrels) {
-            if (b.getWeight() != null) {
-                updated += jpa.updateWeight(b.getId(), b.getWeight());
+        for (Barrel barrel : barrels) {
+            if (barrel.getWeight() != null) {
+                updated += jpa.updateWeight(barrel.getId(), barrel.getWeight());
             }
         }
         return updated;
     }
 
-    private Barrel toDomain(BarrelJpa e) {
-        Barrel b = new Barrel();
-        b.setId(e.getId());
-        b.setGameRoomId(e.getGameRoomId());
-        b.setRoundNumber(e.getRoundNumber());
-        b.setBarrelCode(e.getBarrelCode());
-        b.setDisplayOrder(e.getDisplayOrder());
-        b.setWeight(e.getWeight() != null ? e.getWeight().stripTrailingZeros() : null);
-        return b;
+    private Barrel toDomain(BarrelJpa barrelJpa) {
+        Barrel barrel = new Barrel();
+        barrel.setId(barrelJpa.getId());
+        barrel.setGameRoomId(barrelJpa.getGameRoomId());
+        barrel.setRoundNumber(barrelJpa.getRoundNumber());
+        barrel.setBarrelCode(barrelJpa.getBarrelCode());
+        barrel.setDisplayOrder(barrelJpa.getDisplayOrder());
+        barrel.setWeight(barrelJpa.getWeight() != null ? barrelJpa.getWeight().stripTrailingZeros() : null);
+        return barrel;
     }
 
-    private BarrelJpa toJpa(Barrel b) {
-        BarrelJpa e = new BarrelJpa();
-        e.setId(b.getId());
-        e.setGameRoomId(b.getGameRoomId());
-        e.setRoundNumber(b.getRoundNumber());
-        e.setBarrelCode(b.getBarrelCode());
-        e.setDisplayOrder(b.getDisplayOrder());
-        e.setWeight(b.getWeight());
-        return e;
+    private BarrelJpa toJpa(Barrel barrel) {
+        BarrelJpa jpaEntity = new BarrelJpa();
+        jpaEntity.setId(barrel.getId());
+        jpaEntity.setGameRoomId(barrel.getGameRoomId());
+        jpaEntity.setRoundNumber(barrel.getRoundNumber());
+        jpaEntity.setBarrelCode(barrel.getBarrelCode());
+        jpaEntity.setDisplayOrder(barrel.getDisplayOrder());
+        jpaEntity.setWeight(barrel.getWeight());
+        return jpaEntity;
     }
 }

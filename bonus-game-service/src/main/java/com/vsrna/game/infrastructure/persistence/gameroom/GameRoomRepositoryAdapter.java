@@ -58,13 +58,17 @@ public class GameRoomRepositoryAdapter implements GameRoomRepository {
     @Override
     public GameRoom update(GameRoomQuery query, GameRoomPatch patch) {
         GameRoomJpa entity = findJpa(query);
+        applyPatch(entity, patch);
+        return toDomain(jpa.save(entity));
+    }
+
+    private void applyPatch(GameRoomJpa entity, GameRoomPatch patch) {
         if (patch.status() != null) entity.setStatus(patch.status());
         if (patch.currentPlayerCount() != null) entity.setCurrentPlayerCount(patch.currentPlayerCount());
         if (patch.prizePoolAmount() != null) entity.setPrizePoolAmount(patch.prizePoolAmount());
         if (patch.startedAt() != null) entity.setStartedAt(patch.startedAt());
         if (patch.finishedAt() != null) entity.setFinishedAt(patch.finishedAt());
         if (patch.waitTimerExpiresAt() != null) entity.setWaitTimerExpiresAt(patch.waitTimerExpiresAt());
-        return toDomain(jpa.save(entity));
     }
 
     @Override
@@ -82,30 +86,30 @@ public class GameRoomRepositoryAdapter implements GameRoomRepository {
         return Optional.empty();
     }
 
-    private GameRoom toDomain(GameRoomJpa e) {
+    private GameRoom toDomain(GameRoomJpa jpaEntity) {
         GameRoom room = new GameRoom();
-        room.setId(e.getId());
-        room.setStatus(e.getStatus());
-        room.setCreatedByUserId(e.getCreatedByUserId());
-        room.setCreatedAt(e.getCreatedAt());
-        room.setStartedAt(e.getStartedAt());
-        room.setFinishedAt(e.getFinishedAt());
-        room.setWaitTimerExpiresAt(e.getWaitTimerExpiresAt());
-        room.setCurrentPlayerCount(e.getCurrentPlayerCount());
-        room.setPrizePoolAmount(e.getPrizePoolAmount());
+        room.setId(jpaEntity.getId());
+        room.setStatus(jpaEntity.getStatus());
+        room.setCreatedByUserId(jpaEntity.getCreatedByUserId());
+        room.setCreatedAt(jpaEntity.getCreatedAt());
+        room.setStartedAt(jpaEntity.getStartedAt());
+        room.setFinishedAt(jpaEntity.getFinishedAt());
+        room.setWaitTimerExpiresAt(jpaEntity.getWaitTimerExpiresAt());
+        room.setCurrentPlayerCount(jpaEntity.getCurrentPlayerCount());
+        room.setPrizePoolAmount(jpaEntity.getPrizePoolAmount());
         return room;
     }
 
     private GameRoomJpa toJpa(GameRoom room) {
-        GameRoomJpa e = new GameRoomJpa();
-        e.setId(room.getId());
-        e.setStatus(room.getStatus());
-        e.setCreatedByUserId(room.getCreatedByUserId());
-        e.setStartedAt(room.getStartedAt());
-        e.setFinishedAt(room.getFinishedAt());
-        e.setWaitTimerExpiresAt(room.getWaitTimerExpiresAt());
-        e.setCurrentPlayerCount(room.getCurrentPlayerCount());
-        e.setPrizePoolAmount(room.getPrizePoolAmount());
-        return e;
+        GameRoomJpa jpaEntity = new GameRoomJpa();
+        jpaEntity.setId(room.getId());
+        jpaEntity.setStatus(room.getStatus());
+        jpaEntity.setCreatedByUserId(room.getCreatedByUserId());
+        jpaEntity.setStartedAt(room.getStartedAt());
+        jpaEntity.setFinishedAt(room.getFinishedAt());
+        jpaEntity.setWaitTimerExpiresAt(room.getWaitTimerExpiresAt());
+        jpaEntity.setCurrentPlayerCount(room.getCurrentPlayerCount());
+        jpaEntity.setPrizePoolAmount(room.getPrizePoolAmount());
+        return jpaEntity;
     }
 }

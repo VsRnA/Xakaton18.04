@@ -7,6 +7,5 @@ public class BalanceDto {
     public record UserBalanceResponse(
             BigDecimal available,
             BigDecimal reserved
-            // total не хранится — вычисляется на клиенте: available + reserved
     ) {}
 }

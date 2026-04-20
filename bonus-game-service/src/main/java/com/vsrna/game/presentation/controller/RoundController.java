@@ -29,7 +29,7 @@ public class RoundController {
 
     @Operation(
             summary = "Получить перемешанные бочки раунда",
-            description = "Возвращает ровно 12 бочек в порядке, перемешанном по userId + номеру раунда (Provably Fair shuffle). Веса равны null до завершения раунда."
+            description = "Возвращает бочки раунда в порядке, перемешанном по userId + номеру раунда (Provably Fair shuffle). Веса равны null до завершения раунда."
     )
     @GetMapping("/rounds/{n}/barrels")
     public List<RoundDto.BarrelResponse> getBarrels(@PathVariable UUID roomId,
@@ -37,7 +37,7 @@ public class RoundController {
                                                      HttpServletRequest httpRequest) {
         UUID userId = requireAuth(httpRequest);
         return roundService.getShuffledBarrels(roomId, userId, n).stream()
-                .map(b -> new RoundDto.BarrelResponse(b.getId(), b.getBarrelCode(), b.getWeight()))
+                .map(barrel -> new RoundDto.BarrelResponse(barrel.getId(), barrel.getBarrelCode(), barrel.getWeight()))
                 .toList();
     }
 
@@ -120,9 +120,9 @@ public class RoundController {
         RoundResultDetails details = roundService.getRoundResult(roomId, n);
 
         List<RoundDto.ParticipantScoreResponse> scores = details.scores().stream()
-                .map(s -> new RoundDto.ParticipantScoreResponse(
-                        s.participantId(), s.isBot(), s.totalScore(),
-                        s.selectionCount(), s.rank()))
+                .map(score -> new RoundDto.ParticipantScoreResponse(
+                        score.participantId(), score.isBot(), score.totalScore(),
+                        score.selectionCount(), score.rank()))
                 .toList();
 
         return new RoundDto.RoundResultResponse(n, details.roundResult().getSeedHash(),

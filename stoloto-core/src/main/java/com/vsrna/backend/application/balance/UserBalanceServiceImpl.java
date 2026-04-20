@@ -77,10 +77,6 @@ public class UserBalanceServiceImpl implements UserBalanceService {
         return operation + ":" + userId + ":" + gameRoomId;
     }
 
-    /**
-     * Возвращает true, если операция с данным ключом уже была применена ранее.
-     * Уникальный индекс на idempotencyKey — гарантия на уровне БД, этот метод — быстрая проверка.
-     */
     private boolean isDuplicate(String key) {
         if (transactionRepository.findByIdempotencyKey(key).isPresent()) {
             log.info("Idempotent operation skipped, already applied: key={}", key);

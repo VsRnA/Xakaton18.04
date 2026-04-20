@@ -59,11 +59,15 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
     @Override
     public GameParticipant update(GameParticipantQuery query, GameParticipantPatch patch) {
         GameParticipantJpa entity = findJpa(query);
+        applyPatch(entity, patch);
+        return toDomain(jpa.save(entity));
+    }
+
+    private void applyPatch(GameParticipantJpa entity, GameParticipantPatch patch) {
         if (patch.status() != null) entity.setStatus(patch.status());
         if (patch.advancedToFinal() != null) entity.setAdvancedToFinal(patch.advancedToFinal());
         if (patch.reservedPoints() != null) entity.setReservedPoints(patch.reservedPoints());
         if (patch.displayName() != null) entity.setDisplayName(patch.displayName());
-        return toDomain(jpa.save(entity));
     }
 
     private GameParticipantJpa findJpa(GameParticipantQuery query) {
@@ -85,30 +89,30 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
         return "unknown";
     }
 
-    private GameParticipant toDomain(GameParticipantJpa e) {
-        GameParticipant p = new GameParticipant();
-        p.setId(e.getId());
-        p.setGameRoomId(e.getGameRoomId());
-        p.setUserId(e.getUserId());
-        p.setBot(e.isBot());
-        p.setDisplayName(e.getDisplayName());
-        p.setReservedPoints(e.getReservedPoints());
-        p.setStatus(e.getStatus());
-        p.setAdvancedToFinal(e.isAdvancedToFinal());
-        p.setJoinedAt(e.getJoinedAt());
-        return p;
+    private GameParticipant toDomain(GameParticipantJpa jpaEntity) {
+        GameParticipant participant = new GameParticipant();
+        participant.setId(jpaEntity.getId());
+        participant.setGameRoomId(jpaEntity.getGameRoomId());
+        participant.setUserId(jpaEntity.getUserId());
+        participant.setBot(jpaEntity.isBot());
+        participant.setDisplayName(jpaEntity.getDisplayName());
+        participant.setReservedPoints(jpaEntity.getReservedPoints());
+        participant.setStatus(jpaEntity.getStatus());
+        participant.setAdvancedToFinal(jpaEntity.isAdvancedToFinal());
+        participant.setJoinedAt(jpaEntity.getJoinedAt());
+        return participant;
     }
 
-    private GameParticipantJpa toJpa(GameParticipant p) {
-        GameParticipantJpa e = new GameParticipantJpa();
-        e.setId(p.getId());
-        e.setGameRoomId(p.getGameRoomId());
-        e.setUserId(p.getUserId());
-        e.setBot(p.isBot());
-        e.setDisplayName(p.getDisplayName());
-        e.setReservedPoints(p.getReservedPoints());
-        e.setStatus(p.getStatus());
-        e.setAdvancedToFinal(p.isAdvancedToFinal());
-        return e;
+    private GameParticipantJpa toJpa(GameParticipant participant) {
+        GameParticipantJpa jpaEntity = new GameParticipantJpa();
+        jpaEntity.setId(participant.getId());
+        jpaEntity.setGameRoomId(participant.getGameRoomId());
+        jpaEntity.setUserId(participant.getUserId());
+        jpaEntity.setBot(participant.isBot());
+        jpaEntity.setDisplayName(participant.getDisplayName());
+        jpaEntity.setReservedPoints(participant.getReservedPoints());
+        jpaEntity.setStatus(participant.getStatus());
+        jpaEntity.setAdvancedToFinal(participant.isAdvancedToFinal());
+        return jpaEntity;
     }
 }

@@ -60,39 +60,40 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public User updateUser(UUID guid, UserDto.UpdateUserRequest request) {
         User user = userRepository.get(UserQuery.byId(guid));
+        applyUsernameChange(user, request);
+        applyPasswordChange(user, request);
+        applyNameFields(user, request);
+        applyRoleChange(user, request);
+        return userRepository.create(user);
+    }
 
-        if (request.username() != null && !request.username().isBlank()
-                && !request.username().equals(user.getUsername())) {
-            if (userRepository.find(UserQuery.byUsername(request.username())).isPresent()) {
-                throw ApiException.alreadyExists("User", "username already taken");
-            }
-            user.setUsername(request.username());
+    private void applyUsernameChange(User user, UserDto.UpdateUserRequest request) {
+        if (request.username() == null || request.username().isBlank()) return;
+        if (request.username().equals(user.getUsername())) return;
+        if (userRepository.find(UserQuery.byUsername(request.username())).isPresent()) {
+            throw ApiException.alreadyExists("User", "username already taken");
         }
+        user.setUsername(request.username());
+    }
 
+    private void applyPasswordChange(User user, UserDto.UpdateUserRequest request) {
         if (request.password() != null && !request.password().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.password()));
         }
+    }
 
-        if (request.name() != null) {
-            user.setName(request.name());
-        }
+    private void applyNameFields(User user, UserDto.UpdateUserRequest request) {
+        if (request.name() != null) user.setName(request.name());
+        if (request.lastName() != null) user.setLastName(request.lastName());
+        if (request.patronymicName() != null) user.setPatronymicName(request.patronymicName());
+    }
 
-        if (request.lastName() != null) {
-            user.setLastName(request.lastName());
-        }
-
-        if (request.patronymicName() != null) {
-            user.setPatronymicName(request.patronymicName());
-        }
-
-        if (request.role() != null && !request.role().isBlank()) {
-            String roleKeyword = UserRole.fromString(request.role()).getKeyword();
-            Role role = roleRepository.get(RoleQuery.byKeyword(roleKeyword));
-            user.getRoles().clear();
-            user.getRoles().add(role);
-        }
-
-        return userRepository.create(user);
+    private void applyRoleChange(User user, UserDto.UpdateUserRequest request) {
+        if (request.role() == null || request.role().isBlank()) return;
+        String roleKeyword = UserRole.fromString(request.role()).getKeyword();
+        Role role = roleRepository.get(RoleQuery.byKeyword(roleKeyword));
+        user.getRoles().clear();
+        user.getRoles().add(role);
     }
 
     @Override

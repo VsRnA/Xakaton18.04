@@ -15,13 +15,9 @@ public interface GameHistoryJpaRepository extends JpaRepository<GameHistoryJpa, 
     List<GameHistoryJpa> findByCompletedAtBetween(Instant from, Instant to);
 
     @Query("""
-            SELECT SUM(h.realPlayersRevenue) FROM GameHistoryJpa h
+            SELECT COALESCE(SUM(h.realPlayersRevenue), 0)
+                 - COALESCE(SUM(CASE WHEN h.winnerIsBot = false THEN h.prizeAwarded ELSE 0 END), 0)
+            FROM GameHistoryJpa h
             """)
-    java.math.BigDecimal sumRealPlayersRevenueAll();
-
-    @Query("""
-            SELECT SUM(h.prizeAwarded) FROM GameHistoryJpa h
-            WHERE h.winnerIsBot = false
-            """)
-    java.math.BigDecimal sumPrizeAwardedAll();
+    java.math.BigDecimal getSystemBalance();
 }

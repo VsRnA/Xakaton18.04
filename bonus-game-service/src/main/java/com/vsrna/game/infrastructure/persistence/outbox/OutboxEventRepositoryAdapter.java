@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,46 +31,41 @@ public class OutboxEventRepositoryAdapter implements OutboxEventRepository {
     }
 
     @Override
+    @Transactional
     public void markProcessed(UUID id) {
-        jpa.findById(id).ifPresent(e -> {
-            e.setStatus(OutboxStatus.PROCESSED);
-            e.setProcessedAt(Instant.now());
-            jpa.save(e);
-        });
+        jpa.updateStatus(id, OutboxStatus.PROCESSED, Instant.now());
     }
 
     @Override
+    @Transactional
     public void markFailed(UUID id) {
-        jpa.findById(id).ifPresent(e -> {
-            e.setStatus(OutboxStatus.FAILED);
-            jpa.save(e);
-        });
+        jpa.updateStatus(id, OutboxStatus.FAILED, null);
     }
 
-    private OutboxEvent toDomain(OutboxEventJpa e) {
+    private OutboxEvent toDomain(OutboxEventJpa jpaEntity) {
         OutboxEvent event = new OutboxEvent();
-        event.setId(e.getId());
-        event.setAggregateType(e.getAggregateType());
-        event.setAggregateId(e.getAggregateId());
-        event.setEventType(e.getEventType());
-        event.setTopic(e.getTopic());
-        event.setPayload(e.getPayload());
-        event.setStatus(e.getStatus());
-        event.setCreatedAt(e.getCreatedAt());
-        event.setProcessedAt(e.getProcessedAt());
+        event.setId(jpaEntity.getId());
+        event.setAggregateType(jpaEntity.getAggregateType());
+        event.setAggregateId(jpaEntity.getAggregateId());
+        event.setEventType(jpaEntity.getEventType());
+        event.setTopic(jpaEntity.getTopic());
+        event.setPayload(jpaEntity.getPayload());
+        event.setStatus(jpaEntity.getStatus());
+        event.setCreatedAt(jpaEntity.getCreatedAt());
+        event.setProcessedAt(jpaEntity.getProcessedAt());
         return event;
     }
 
     private OutboxEventJpa toJpa(OutboxEvent event) {
-        OutboxEventJpa e = new OutboxEventJpa();
-        e.setId(event.getId());
-        e.setAggregateType(event.getAggregateType());
-        e.setAggregateId(event.getAggregateId());
-        e.setEventType(event.getEventType());
-        e.setTopic(event.getTopic());
-        e.setPayload(event.getPayload());
-        e.setStatus(event.getStatus());
-        e.setProcessedAt(event.getProcessedAt());
-        return e;
+        OutboxEventJpa jpaEntity = new OutboxEventJpa();
+        jpaEntity.setId(event.getId());
+        jpaEntity.setAggregateType(event.getAggregateType());
+        jpaEntity.setAggregateId(event.getAggregateId());
+        jpaEntity.setEventType(event.getEventType());
+        jpaEntity.setTopic(event.getTopic());
+        jpaEntity.setPayload(event.getPayload());
+        jpaEntity.setStatus(event.getStatus());
+        jpaEntity.setProcessedAt(event.getProcessedAt());
+        return jpaEntity;
     }
 }

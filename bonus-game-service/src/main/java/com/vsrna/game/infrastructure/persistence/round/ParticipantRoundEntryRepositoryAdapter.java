@@ -49,13 +49,17 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
     @Override
     public ParticipantRoundEntry update(ParticipantRoundEntryQuery query, ParticipantRoundEntryPatch patch) {
         ParticipantRoundEntryJpa entity = findJpa(query);
+        applyPatch(entity, patch);
+        return toDomain(jpa.save(entity));
+    }
+
+    private void applyPatch(ParticipantRoundEntryJpa entity, ParticipantRoundEntryPatch patch) {
         if (patch.boostPurchased() != null) entity.setBoostPurchased(patch.boostPurchased());
         if (patch.boostedBarrelId() != null) entity.setBoostedBarrelId(patch.boostedBarrelId());
         if (patch.totalScore() != null) entity.setTotalScore(patch.totalScore());
         if (patch.selectionTimestamp() != null) entity.setSelectionTimestamp(patch.selectionTimestamp());
         if (patch.selectionCount() != null) entity.setSelectionCount(patch.selectionCount());
         if (patch.rankInRound() != null) entity.setRankInRound(patch.rankInRound());
-        return toDomain(jpa.save(entity));
     }
 
     @Override
@@ -80,31 +84,31 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
         return "roundResult=" + query.roundResultId() + ", participant=" + query.participantId();
     }
 
-    private ParticipantRoundEntry toDomain(ParticipantRoundEntryJpa e) {
+    private ParticipantRoundEntry toDomain(ParticipantRoundEntryJpa jpaEntity) {
         ParticipantRoundEntry entry = new ParticipantRoundEntry();
-        entry.setId(e.getId());
-        entry.setRoundResultId(e.getRoundResultId());
-        entry.setParticipantId(e.getParticipantId());
-        entry.setBoostPurchased(e.isBoostPurchased());
-        entry.setBoostedBarrelId(e.getBoostedBarrelId());
-        entry.setTotalScore(e.getTotalScore());
-        entry.setSelectionTimestamp(e.getSelectionTimestamp());
-        entry.setSelectionCount(e.getSelectionCount());
-        entry.setRankInRound(e.getRankInRound());
+        entry.setId(jpaEntity.getId());
+        entry.setRoundResultId(jpaEntity.getRoundResultId());
+        entry.setParticipantId(jpaEntity.getParticipantId());
+        entry.setBoostPurchased(jpaEntity.isBoostPurchased());
+        entry.setBoostedBarrelId(jpaEntity.getBoostedBarrelId());
+        entry.setTotalScore(jpaEntity.getTotalScore());
+        entry.setSelectionTimestamp(jpaEntity.getSelectionTimestamp());
+        entry.setSelectionCount(jpaEntity.getSelectionCount());
+        entry.setRankInRound(jpaEntity.getRankInRound());
         return entry;
     }
 
     private ParticipantRoundEntryJpa toJpa(ParticipantRoundEntry entry) {
-        ParticipantRoundEntryJpa e = new ParticipantRoundEntryJpa();
-        e.setId(entry.getId());
-        e.setRoundResultId(entry.getRoundResultId());
-        e.setParticipantId(entry.getParticipantId());
-        e.setBoostPurchased(entry.isBoostPurchased());
-        e.setBoostedBarrelId(entry.getBoostedBarrelId());
-        e.setTotalScore(entry.getTotalScore());
-        e.setSelectionTimestamp(entry.getSelectionTimestamp());
-        e.setSelectionCount(entry.getSelectionCount());
-        e.setRankInRound(entry.getRankInRound());
-        return e;
+        ParticipantRoundEntryJpa jpaEntity = new ParticipantRoundEntryJpa();
+        jpaEntity.setId(entry.getId());
+        jpaEntity.setRoundResultId(entry.getRoundResultId());
+        jpaEntity.setParticipantId(entry.getParticipantId());
+        jpaEntity.setBoostPurchased(entry.isBoostPurchased());
+        jpaEntity.setBoostedBarrelId(entry.getBoostedBarrelId());
+        jpaEntity.setTotalScore(entry.getTotalScore());
+        jpaEntity.setSelectionTimestamp(entry.getSelectionTimestamp());
+        jpaEntity.setSelectionCount(entry.getSelectionCount());
+        jpaEntity.setRankInRound(entry.getRankInRound());
+        return jpaEntity;
     }
 }

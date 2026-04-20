@@ -39,11 +39,15 @@ public class RoundResultRepositoryAdapter implements RoundResultRepository {
     @Override
     public RoundResult update(RoundResultQuery query, RoundResultPatch patch) {
         RoundResultJpa entity = findJpa(query);
+        applyPatch(entity, patch);
+        return toDomain(jpa.save(entity));
+    }
+
+    private void applyPatch(RoundResultJpa entity, RoundResultPatch patch) {
         if (patch.status() != null) entity.setStatus(patch.status());
         if (patch.seedHash() != null) entity.setSeedHash(patch.seedHash());
         if (patch.rawSeed() != null) entity.setRawSeed(patch.rawSeed());
         if (patch.endedAt() != null) entity.setEndedAt(patch.endedAt());
-        return toDomain(jpa.save(entity));
     }
 
     private RoundResultJpa findJpa(RoundResultQuery query) {
@@ -64,28 +68,28 @@ public class RoundResultRepositoryAdapter implements RoundResultRepository {
         return "unknown";
     }
 
-    private RoundResult toDomain(RoundResultJpa e) {
-        RoundResult rr = new RoundResult();
-        rr.setId(e.getId());
-        rr.setGameRoomId(e.getGameRoomId());
-        rr.setRoundNumber(e.getRoundNumber());
-        rr.setStatus(e.getStatus());
-        rr.setSeedHash(e.getSeedHash());
-        rr.setRawSeed(e.getRawSeed());
-        rr.setStartedAt(e.getStartedAt());
-        rr.setEndedAt(e.getEndedAt());
-        return rr;
+    private RoundResult toDomain(RoundResultJpa jpaEntity) {
+        RoundResult roundResult = new RoundResult();
+        roundResult.setId(jpaEntity.getId());
+        roundResult.setGameRoomId(jpaEntity.getGameRoomId());
+        roundResult.setRoundNumber(jpaEntity.getRoundNumber());
+        roundResult.setStatus(jpaEntity.getStatus());
+        roundResult.setSeedHash(jpaEntity.getSeedHash());
+        roundResult.setRawSeed(jpaEntity.getRawSeed());
+        roundResult.setStartedAt(jpaEntity.getStartedAt());
+        roundResult.setEndedAt(jpaEntity.getEndedAt());
+        return roundResult;
     }
 
-    private RoundResultJpa toJpa(RoundResult rr) {
-        RoundResultJpa e = new RoundResultJpa();
-        e.setId(rr.getId());
-        e.setGameRoomId(rr.getGameRoomId());
-        e.setRoundNumber(rr.getRoundNumber());
-        e.setStatus(rr.getStatus());
-        e.setSeedHash(rr.getSeedHash());
-        e.setRawSeed(rr.getRawSeed());
-        e.setEndedAt(rr.getEndedAt());
-        return e;
+    private RoundResultJpa toJpa(RoundResult roundResult) {
+        RoundResultJpa jpaEntity = new RoundResultJpa();
+        jpaEntity.setId(roundResult.getId());
+        jpaEntity.setGameRoomId(roundResult.getGameRoomId());
+        jpaEntity.setRoundNumber(roundResult.getRoundNumber());
+        jpaEntity.setStatus(roundResult.getStatus());
+        jpaEntity.setSeedHash(roundResult.getSeedHash());
+        jpaEntity.setRawSeed(roundResult.getRawSeed());
+        jpaEntity.setEndedAt(roundResult.getEndedAt());
+        return jpaEntity;
     }
 }

@@ -4,6 +4,7 @@ import com.vsrna.game.application.bot.BotService;
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.port.GameSchedulerPort;
+import com.vsrna.game.application.round.RoundConstants;
 import com.vsrna.game.application.round.RoundService;
 import com.vsrna.game.domain.barrel.*;
 import com.vsrna.game.domain.exception.ApiException;
@@ -26,6 +27,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class GameRoomServiceImpl implements GameRoomService {
+
+    private static final int MIN_PLAYERS_TO_START = 2;
 
     private final GameRoomRepository gameRoomRepository;
     private final GameRoomConfigRepository gameRoomConfigRepository;
@@ -55,10 +58,10 @@ public class GameRoomServiceImpl implements GameRoomService {
         gameRoomConfigRepository.create(config);
 
         List<Barrel> barrels = new ArrayList<>();
-        for (int i = 1; i <= 12; i++) {
+        for (int i = 1; i <= RoundConstants.BARRELS_PER_ROUND; i++) {
             barrels.add(new Barrel(room.getId(), 1, String.format("R1B%02d", i), i));
         }
-        for (int i = 1; i <= 12; i++) {
+        for (int i = 1; i <= RoundConstants.BARRELS_PER_ROUND; i++) {
             barrels.add(new Barrel(room.getId(), 2, String.format("R2B%02d", i), i));
         }
         barrelRepository.createAll(barrels);
@@ -98,8 +101,6 @@ public class GameRoomServiceImpl implements GameRoomService {
                 new GameRoomPatch(null, newCount, newPrize, null, null, null)
         );
 
-        // Резервируем баланс внутри транзакции — если не хватает средств или запись не найдена,
-        // транзакция откатится и пользователь не попадёт в комнату.
         balancePort.reserve(userId, config.getEntryFeeAmount(), roomId);
 
         Instant waitTimerExpiresAt = null;
@@ -158,7 +159,7 @@ public class GameRoomServiceImpl implements GameRoomService {
 
         int total = participantRepository.count(GameParticipantQuery.byRoom(roomId));
         log.info("fillWithBots: total participants={} in room {}", total, roomId);
-        if (total >= 2) {
+        if (total >= MIN_PLAYERS_TO_START) {
             log.info("fillWithBots: starting round 1 for room {}", roomId);
             roundService.startRound(roomId, 1);
             notifierPort.publishRoomsUpdate(Map.of(

@@ -12,7 +12,6 @@ import java.util.UUID;
 
 public interface UserBalanceJpaRepository extends JpaRepository<UserBalance, UUID> {
 
-    // Атомарное резервирование: available → reserved, защита от overdraft + @Version
     @Modifying
     @Query("""
             UPDATE UserBalance b
@@ -29,7 +28,6 @@ public interface UserBalanceJpaRepository extends JpaRepository<UserBalance, UUI
                 @Param("version") long version,
                 @Param("now") Instant now);
 
-    // Освобождение резерва: reserved → available
     @Modifying
     @Query("""
             UPDATE UserBalance b
@@ -46,7 +44,6 @@ public interface UserBalanceJpaRepository extends JpaRepository<UserBalance, UUI
                 @Param("version") long version,
                 @Param("now") Instant now);
 
-    // Финальное списание из reserved
     @Modifying
     @Query("""
             UPDATE UserBalance b
@@ -62,7 +59,6 @@ public interface UserBalanceJpaRepository extends JpaRepository<UserBalance, UUI
                        @Param("version") long version,
                        @Param("now") Instant now);
 
-    // Прямое списание из available (для буста)
     @Modifying
     @Query("""
             UPDATE UserBalance b
@@ -78,7 +74,6 @@ public interface UserBalanceJpaRepository extends JpaRepository<UserBalance, UUI
                @Param("version") long version,
                @Param("now") Instant now);
 
-    // Зачисление в available (выигрыш)
     @Modifying
     @Query("""
             UPDATE UserBalance b

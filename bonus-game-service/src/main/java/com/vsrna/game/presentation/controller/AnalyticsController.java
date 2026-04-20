@@ -27,27 +27,7 @@ public class AnalyticsController {
 
     @Operation(
             summary = "Дашборд аналитики за период",
-            description = """
-                    Возвращает сводку KPI и time-series для графиков одним запросом.
-
-                    **summary.economics:**
-                    - `totalRealRevenue` — баллы, собранные с живых игроков
-                    - `totalPrizesAwarded` — выплачено победителям
-                    - `totalRetained` — удержано системой (реальный доход)
-                    - `retentionRatePercent` — средний % удержания
-                    - `cumulativeSystemBalance` — накопленный баланс за ВСЕ время (сигнал для ботов)
-                    - `systemBalanceStatus` — `POSITIVE` (боты играют случайно) / `NEGATIVE` (боты защищают маржу)
-
-                    **summary.rooms:** кол-во игр, bot win rate, средняя загрузка реальными игроками
-
-                    **summary.players:** уникальные победители, частота использования буста,
-                    % побед с бустом (эффективность буста)
-
-                    **timeseries:** массив точек по одной на каждый день — для построения графиков.
-                    Каждая точка: `date`, `gamesCount`, `realRevenue`, `prizesAwarded`, `retained`, `botWins`, `realWins`.
-
-                    Параметры `from`/`to` — ISO-8601 UTC. По умолчанию: последние 30 дней.
-                    """
+            description = "KPI сводка и time-series по дням. Параметры `from`/`to` — ISO-8601 UTC. По умолчанию: последние 30 дней."
     )
     @GetMapping
     public ResponseEntity<AnalyticsDto.AnalyticsDashboardResponse> getDashboard(

@@ -11,19 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Документация WebSocket-каналов (STOMP/SockJS).
- *
- * <p>Это не реальные REST-эндпоинты — методы возвращают 501 Not Implemented.
- * Описания показывают, на какой STOMP-топик подписываться и какие события ожидать.
- *
- * <p><b>Подключение:</b>
- * <pre>
- *   SockJS: ws://&lt;stoloto-core&gt;/ws/game
- *   Протокол: STOMP
- *   Аутентификация: заголовок Authorization: Bearer &lt;jwt&gt;
- * </pre>
- */
 @RestController
 @RequestMapping("/ws/docs")
 @Tag(

@@ -111,11 +111,11 @@ public class GameRoomController {
                                                                    HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
         return gameRoomService.listParticipants(roomId).stream()
-                .map(p -> new GameRoomDto.ParticipantResponse(
-                        p.getId(),
-                        p.getDisplayName(),
-                        p.isBot(),
-                        p.getStatus()
+                .map(participant -> new GameRoomDto.ParticipantResponse(
+                        participant.getId(),
+                        participant.getDisplayName(),
+                        participant.isBot(),
+                        participant.getStatus()
                 ))
                 .toList();
     }

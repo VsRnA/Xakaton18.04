@@ -34,7 +34,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 UUID userId = UUID.fromString(claims.getSubject());
                 request.setAttribute(USER_ID_ATTR, userId);
             } catch (Exception ignored) {
-                // невалидный токен — не устанавливаем атрибут, запрос продолжается без аутентификации
             }
         }
 

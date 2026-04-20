@@ -23,6 +23,10 @@ public class GameParticipant {
     private boolean advancedToFinal;
     private Instant joinedAt;
 
+    public boolean isRealPlayer() {
+        return !isBot && userId != null;
+    }
+
     public GameParticipant(UUID gameRoomId, UUID userId, boolean isBot, String displayName, BigDecimal reservedPoints) {
         this.gameRoomId = gameRoomId;
         this.userId = userId;

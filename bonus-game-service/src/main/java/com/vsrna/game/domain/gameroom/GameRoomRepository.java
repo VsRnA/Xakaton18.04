@@ -7,7 +7,6 @@ public interface GameRoomRepository {
     GameRoom create(GameRoom gameRoom);
     Optional<GameRoom> find(GameRoomQuery query);
     GameRoom get(GameRoomQuery query);
-    /** Читает строку с SELECT FOR UPDATE — использовать внутри транзакции при конкурентных изменениях. */
     GameRoom getForUpdate(GameRoomQuery query);
     List<GameRoom> list(GameRoomQuery query);
     GameRoom update(GameRoomQuery query, GameRoomPatch patch);

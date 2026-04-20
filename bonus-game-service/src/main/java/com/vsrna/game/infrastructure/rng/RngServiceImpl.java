@@ -18,13 +18,11 @@ import java.util.UUID;
 @Service
 public class RngServiceImpl implements RngPort {
 
-    /** Веса бочек: целые числа от -10 до 10 включительно (21 значение). */
     private static final int WEIGHT_MIN = -10;
-    private static final int WEIGHT_RANGE_SIZE = 21; // [-10, 10]
+    private static final int WEIGHT_RANGE_SIZE = 21;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
-    /** Фаза 1: генерируем seed, возвращаем seedHash (публикуется) + rawSeed (хранится в БД). */
     @Override
     public RngCommitment commit(UUID roomId, int roundNumber) {
         byte[] seed = buildSeed(roomId, roundNumber);
@@ -33,7 +31,6 @@ public class RngServiceImpl implements RngPort {
         return new RngCommitment(seedHex, seedHash);
     }
 
-    /** Фаза 2: детерминированно восстанавливаем веса из сохранённого seedHex. */
     @Override
     public List<BigDecimal> reveal(String seedHex, int count) {
         byte[] seed = HexFormat.of().parseHex(seedHex);
@@ -41,18 +38,14 @@ public class RngServiceImpl implements RngPort {
     }
 
     private byte[] buildSeed(UUID roomId, int roundNumber) {
-        // 1. OS entropy — 32 bytes от SecureRandom (/dev/urandom)
         byte[] osEntropy = new byte[32];
         secureRandom.nextBytes(osEntropy);
 
-        // 2. Time entropy — nano + millis = 16 bytes
         byte[] timeEntropy = longToBytes(System.nanoTime(), System.currentTimeMillis());
 
-        // 3. Context entropy — SHA-256("roomId:roundNumber")
         String ctx = roomId.toString() + ":" + roundNumber;
         byte[] ctxEntropy = sha256(ctx.getBytes(StandardCharsets.UTF_8));
 
-        // XOR трёх источников
         byte[] seed = new byte[32];
         for (int i = 0; i < 32; i++) {
             seed[i] = (byte) (osEntropy[i] ^ timeEntropy[i % timeEntropy.length] ^ ctxEntropy[i]);
@@ -61,13 +54,11 @@ public class RngServiceImpl implements RngPort {
     }
 
     private List<BigDecimal> generateWeights(byte[] seed, int count) {
-        // Детерминированная генерация: XOR четырёх 8-байтовых чанков — используем все 32 байта.
         long seedLong = readLong(seed, 0) ^ readLong(seed, 8) ^ readLong(seed, 16) ^ readLong(seed, 24);
         Random rng = new Random(seedLong);
 
         List<BigDecimal> weights = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            // Целое число в диапазоне [-10, 10] (21 значение)
             int intWeight = rng.nextInt(WEIGHT_RANGE_SIZE) + WEIGHT_MIN;
             weights.add(BigDecimal.valueOf(intWeight));
         }

@@ -40,10 +40,6 @@ public class RoundDto {
             UUID winnerId
     ) {}
 
-    /**
-     * Ответ верификации честности раунда (Provably Fair).
-     * valid=true: SHA256(rawSeed) == seedHash — результаты не подтасованы.
-     */
     public record VerifyRoundResponse(
             String seedHash,
             String rawSeed,

@@ -33,7 +33,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             return emptyResult(from, to, cumulativeBalance);
         }
 
-        // Экономика
         BigDecimal totalRealRevenue = sum(games, GameHistory::getRealPlayersRevenue);
         BigDecimal totalPrizesAwarded = sum(games, GameHistory::getPrizeAwarded);
         BigDecimal totalBoostRevenue = sum(games, GameHistory::getBoostRevenue);
@@ -43,7 +42,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                         .multiply(BigDecimal.valueOf(100)).doubleValue()
                 : 0.0;
 
-        // Комнаты
         long botWins = games.stream().filter(GameHistory::isWinnerIsBot).count();
         long realWins = totalGames - botWins;
         double botWinRate = pct(botWins, totalGames);
@@ -57,18 +55,16 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                         : 0.0)
                 .average().orElse(0.0) * 100;
 
-        // Игроки
         long uniqueWinners = games.stream()
-                .filter(g -> !g.isWinnerIsBot() && g.getWinnerUserId() != null)
+                .filter(game -> !game.isWinnerIsBot() && game.getWinnerUserId() != null)
                 .map(GameHistory::getWinnerUserId)
                 .collect(Collectors.toSet())
                 .size();
-        long gamesWithBoost = games.stream().filter(g -> g.getBoostUsedCount() > 0).count();
+        long gamesWithBoost = games.stream().filter(game -> game.getBoostUsedCount() > 0).count();
         double boostUsageRate = pct(gamesWithBoost, totalGames);
 
-        // Буст → вероятность победы
         long realWinsWithBoost = games.stream()
-                .filter(g -> !g.isWinnerIsBot() && g.isWinnerUsedBoost())
+                .filter(game -> !game.isWinnerIsBot() && game.isWinnerUsedBoost())
                 .count();
         double winnerBoostRate = realWins > 0 ? pct(realWinsWithBoost, realWins) : 0.0;
 
@@ -89,10 +85,9 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public List<TimeSeriesPoint> getTimeSeries(Instant from, Instant to) {
         List<GameHistory> games = gameHistoryRepository.listByPeriod(from, to);
 
-        // Группируем по дате UTC
         Map<LocalDate, List<GameHistory>> byDay = games.stream()
-                .collect(Collectors.groupingBy(g ->
-                        g.getCompletedAt().atZone(ZoneOffset.UTC).toLocalDate()));
+                .collect(Collectors.groupingBy(game ->
+                        game.getCompletedAt().atZone(ZoneOffset.UTC).toLocalDate()));
 
         List<LocalDate> allDays = new ArrayList<>();
         LocalDate cursor = from.atZone(ZoneOffset.UTC).toLocalDate();
@@ -116,7 +111,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     private BigDecimal sum(List<GameHistory> games,
                            java.util.function.Function<GameHistory, BigDecimal> getter) {
         return games.stream()
-                .map(g -> getter.apply(g) != null ? getter.apply(g) : BigDecimal.ZERO)
+                .map(game -> getter.apply(game) != null ? getter.apply(game) : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 

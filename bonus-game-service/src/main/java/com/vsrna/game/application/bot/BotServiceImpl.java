@@ -79,10 +79,6 @@ public class BotServiceImpl implements BotService {
         }
     }
 
-    /**
-     * В защитном режиме выбираем бочки с наибольшим весом (боты максимизируют свой скор).
-     * В обычном режиме — случайный выбор.
-     */
     private List<Barrel> selectBarrels(List<Barrel> barrels, Map<UUID, BigDecimal> barrelWeights,
                                        int maxSelection, boolean protectionMode) {
         int count = Math.min(maxSelection, barrels.size());

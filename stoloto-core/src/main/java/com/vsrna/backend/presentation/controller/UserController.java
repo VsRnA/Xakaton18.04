@@ -2,14 +2,10 @@ package com.vsrna.backend.presentation.controller;
 
 import com.vsrna.backend.application.user.UserService;
 import com.vsrna.backend.domain.exception.ApiException;
-import com.vsrna.backend.presentation.dto.ApiErrorResponse;
 import com.vsrna.backend.presentation.dto.UserDto;
 import com.vsrna.backend.presentation.filter.AuthTokenFilter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -18,7 +14,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,16 +31,9 @@ public class UserController {
     @Operation(summary = "Создать пользователя")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Пользователь создан"),
-            @ApiResponse(responseCode = "400", description = "Некорректный запрос",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class))),
-            @ApiResponse(responseCode = "401", description = "Не авторизован",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class),
-                            examples = @ExampleObject(value = ApiErrorResponse.AUTH_ERROR_EXAMPLE))),
-            @ApiResponse(responseCode = "409", description = "Пользователь уже существует",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class)))
+            @ApiResponse(responseCode = "400", description = "Некорректный запрос"),
+            @ApiResponse(responseCode = "401", description = "Не авторизован"),
+            @ApiResponse(responseCode = "409", description = "Пользователь уже существует")
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -58,10 +46,7 @@ public class UserController {
     @Operation(summary = "Получить список пользователей")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Список пользователей"),
-            @ApiResponse(responseCode = "401", description = "Не авторизован",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class),
-                            examples = @ExampleObject(value = ApiErrorResponse.AUTH_ERROR_EXAMPLE)))
+            @ApiResponse(responseCode = "401", description = "Не авторизован")
     })
     @GetMapping
     public List<UserDto.UserResponse> listUsers(
@@ -81,13 +66,8 @@ public class UserController {
     @Operation(summary = "Получить пользователя по GUID")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Пользователь найден"),
-            @ApiResponse(responseCode = "401", description = "Не авторизован",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class),
-                            examples = @ExampleObject(value = ApiErrorResponse.AUTH_ERROR_EXAMPLE))),
-            @ApiResponse(responseCode = "404", description = "Пользователь не найден",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class)))
+            @ApiResponse(responseCode = "401", description = "Не авторизован"),
+            @ApiResponse(responseCode = "404", description = "Пользователь не найден")
     })
     @GetMapping("/{guid}")
     public UserDto.UserResponse getUser(@PathVariable UUID guid, HttpServletRequest httpRequest) {
@@ -98,16 +78,9 @@ public class UserController {
     @Operation(summary = "Обновить пользователя")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Пользователь обновлён"),
-            @ApiResponse(responseCode = "400", description = "Некорректный запрос",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class))),
-            @ApiResponse(responseCode = "401", description = "Не авторизован",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class),
-                            examples = @ExampleObject(value = ApiErrorResponse.AUTH_ERROR_EXAMPLE))),
-            @ApiResponse(responseCode = "404", description = "Пользователь не найден",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class)))
+            @ApiResponse(responseCode = "400", description = "Некорректный запрос"),
+            @ApiResponse(responseCode = "401", description = "Не авторизован"),
+            @ApiResponse(responseCode = "404", description = "Пользователь не найден")
     })
     @PutMapping("/{guid}")
     public UserDto.UserResponse updateUser(@PathVariable UUID guid,
@@ -120,13 +93,8 @@ public class UserController {
     @Operation(summary = "Удалить пользователя")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Пользователь удалён"),
-            @ApiResponse(responseCode = "401", description = "Не авторизован",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class),
-                            examples = @ExampleObject(value = ApiErrorResponse.AUTH_ERROR_EXAMPLE))),
-            @ApiResponse(responseCode = "404", description = "Пользователь не найден",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ApiErrorResponse.Body.class)))
+            @ApiResponse(responseCode = "401", description = "Не авторизован"),
+            @ApiResponse(responseCode = "404", description = "Пользователь не найден")
     })
     @DeleteMapping("/{guid}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

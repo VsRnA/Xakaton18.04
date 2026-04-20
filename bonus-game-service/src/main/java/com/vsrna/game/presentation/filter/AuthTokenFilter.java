@@ -36,7 +36,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 request.setAttribute(USER_ID_ATTR, userId);
                 request.setAttribute(USERNAME_ATTR, claims.get("username", String.class));
             } catch (Exception ignored) {
-                // невалидный токен — не устанавливаем атрибут, запрос продолжается без аутентификации
             }
         }
 

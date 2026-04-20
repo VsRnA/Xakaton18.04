@@ -38,11 +38,6 @@ public class PointTransaction {
     @Column(name = "description")
     private String description;
 
-    /**
-     * Ключ идемпотентности: при повторном вызове с тем же ключом транзакция игнорируется.
-     * Nullable — для старых записей без ключа. PostgreSQL допускает несколько NULL в UNIQUE.
-     * Формат: "{ТИП}:{userId}:{gameRoomId}"
-     */
     @Column(name = "\"idempotencyKey\"", unique = true)
     private String idempotencyKey;
 
