@@ -51,7 +51,7 @@ public class GameWebSocketPublisher implements GameNotifierPort {
         try {
             Map<String, Object> envelope = new java.util.LinkedHashMap<>();
             envelope.put("destination", destination);
-            if (userId != null) envelope.put("userId", userId);
+            envelope.put("userId", userId);
             envelope.put("payload", payload);
             String json = objectMapper.writeValueAsString(envelope);
             outboxRepository.save(new OutboxEvent(aggregateType, aggregateId, eventType, TOPIC, json));

@@ -18,10 +18,15 @@ public class WsEventRelay {
             containerFactory = "wsEventContainerFactory")
     public void handleWsEvent(WsEventMessage event) {
         log.debug("Relaying WS event to {}, userId={}", event.destination(), event.userId());
-        if (event.userId() != null) {
-            messaging.convertAndSendToUser(event.userId(), event.destination(), event.payload());
-        } else {
-            messaging.convertAndSend(event.destination(), event.payload());
+        try {
+            if (event.userId() != null) {
+                messaging.convertAndSendToUser(event.userId(), event.destination(), event.payload());
+            } else {
+                messaging.convertAndSend(event.destination(), event.payload());
+            }
+        } catch (Exception e) {
+            log.error("Failed to relay WS event destination={}, userId={}: {}",
+                    event.destination(), event.userId(), e.getMessage(), e);
         }
     }
 }
