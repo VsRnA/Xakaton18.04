@@ -1,7 +1,7 @@
 package com.vsrna.backend.application.user;
 
 import com.vsrna.backend.domain.user.User;
-import com.vsrna.backend.presentation.dto.UserDto;
+import com.vsrna.backend.presentation.dto.user.UserDto;
 
 import java.util.List;
 import java.util.UUID;

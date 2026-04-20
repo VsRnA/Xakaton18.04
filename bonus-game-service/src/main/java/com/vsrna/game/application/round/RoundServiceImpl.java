@@ -40,11 +40,6 @@ public class RoundServiceImpl implements RoundService {
     }
 
     @Override
-    public void applyBoost(UUID roomId, UUID userId, int roundNumber, UUID boostedBarrelId) {
-        boostService.applyBoost(roomId, userId, roundNumber, boostedBarrelId);
-    }
-
-    @Override
     public void resolveRound(UUID roomId, int roundNumber) {
         lifecycleService.resolveRound(roomId, roundNumber);
     }

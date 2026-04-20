@@ -15,7 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,15 +39,12 @@ public class AnalyticsController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
             HttpServletRequest httpRequest) {
 
-        requireAuth(httpRequest);
+        requireAdminAuth(httpRequest);
 
-        Instant effectiveTo = to != null ? to : Instant.now();
-        Instant effectiveFrom = from != null ? from : effectiveTo.minus(30, ChronoUnit.DAYS);
-
-        GameAnalyticsSummary summary = analyticsService.getSummary(effectiveFrom, effectiveTo);
+        GameAnalyticsSummary summary = analyticsService.getSummary(from, to);
         return ResponseEntity.ok(new AnalyticsDto.AnalyticsDashboardResponse(
                 AnalyticsDto.AnalyticsSummaryResponse.from(summary),
-                analyticsService.getTimeSeries(effectiveFrom, effectiveTo)
+                analyticsService.getTimeSeries(from, to)
         ));
     }
 
@@ -63,12 +60,9 @@ public class AnalyticsController {
             @RequestParam(defaultValue = "20") int size,
             HttpServletRequest httpRequest) {
 
-        requireAuth(httpRequest);
+        requireAdminAuth(httpRequest);
 
-        Instant effectiveTo = to != null ? to : Instant.now();
-        Instant effectiveFrom = from != null ? from : effectiveTo.minus(30, ChronoUnit.DAYS);
-
-        List<GameHistory> games = analyticsService.listGames(effectiveFrom, effectiveTo, page, size);
+        List<GameHistory> games = analyticsService.listGames(from, to, page, size);
         List<AnalyticsDto.AdminGameRecord> records = games.stream()
                 .map(g -> new AnalyticsDto.AdminGameRecord(
                         g.getGameRoomId(), g.getCompletedAt(), g.getWinnerUserId(),
@@ -83,6 +77,16 @@ public class AnalyticsController {
         UUID userId = (UUID) request.getAttribute(AuthTokenFilter.USER_ID_ATTR);
         if (userId == null) {
             throw ApiException.unauthorized("bearer token required");
+        }
+        return userId;
+    }
+
+    @SuppressWarnings("unchecked")
+    private UUID requireAdminAuth(HttpServletRequest request) {
+        UUID userId = requireAuth(request);
+        Collection<String> roles = (Collection<String>) request.getAttribute(AuthTokenFilter.ROLES_ATTR);
+        if (roles == null || !roles.contains("ADMIN")) {
+            throw ApiException.forbidden("access denied: admin role required");
         }
         return userId;
     }

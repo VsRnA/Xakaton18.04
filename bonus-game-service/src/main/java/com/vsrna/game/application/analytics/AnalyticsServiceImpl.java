@@ -1,6 +1,7 @@
 package com.vsrna.game.application.analytics;
 
 import com.vsrna.game.domain.history.GameHistory;
+import com.vsrna.game.domain.history.GameHistoryQuery;
 import com.vsrna.game.domain.history.GameHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -22,15 +24,27 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     private final GameHistoryRepository gameHistoryRepository;
 
+    private static final int DEFAULT_PERIOD_DAYS = 30;
+
+    private Instant resolveEffectiveTo(Instant to) {
+        return to != null ? to : Instant.now();
+    }
+
+    private Instant resolveEffectiveFrom(Instant from, Instant effectiveTo) {
+        return from != null ? from : effectiveTo.minus(DEFAULT_PERIOD_DAYS, ChronoUnit.DAYS);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public GameAnalyticsSummary getSummary(Instant from, Instant to) {
-        List<GameHistory> games = gameHistoryRepository.listByPeriod(from, to);
+        Instant effectiveTo = resolveEffectiveTo(to);
+        Instant effectiveFrom = resolveEffectiveFrom(from, effectiveTo);
+        List<GameHistory> games = gameHistoryRepository.list(GameHistoryQuery.byPeriod(effectiveFrom, effectiveTo));
         BigDecimal cumulativeBalance = gameHistoryRepository.getCumulativeSystemBalance();
 
         long totalGames = games.size();
         if (totalGames == 0) {
-            return emptyResult(from, to, cumulativeBalance);
+            return emptyResult(effectiveFrom, effectiveTo, cumulativeBalance);
         }
 
         BigDecimal totalRealRevenue = sum(games, GameHistory::getRealPlayersRevenue);
@@ -42,9 +56,9 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                         .multiply(BigDecimal.valueOf(100)).doubleValue()
                 : 0.0;
 
-        long botWins = games.stream().filter(GameHistory::isWinnerIsBot).count();
-        long realWins = totalGames - botWins;
-        double botWinRate = pct(botWins, totalGames);
+        long botWinsCount = games.stream().filter(GameHistory::isWinnerIsBot).count();
+        long realWinsCount = totalGames - botWinsCount;
+        double botWinRate = pct(botWinsCount, totalGames);
 
         double avgRealPlayers = games.stream()
                 .mapToInt(GameHistory::getRealPlayersCount)
@@ -58,22 +72,22 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         long uniqueWinners = games.stream()
                 .filter(game -> !game.isWinnerIsBot() && game.getWinnerUserId() != null)
                 .map(GameHistory::getWinnerUserId)
-                .collect(Collectors.toSet())
-                .size();
+                .distinct()
+                .count();
         long gamesWithBoost = games.stream().filter(game -> game.getBoostUsedCount() > 0).count();
         double boostUsageRate = pct(gamesWithBoost, totalGames);
 
         long realWinsWithBoost = games.stream()
                 .filter(game -> !game.isWinnerIsBot() && game.isWinnerUsedBoost())
                 .count();
-        double winnerBoostRate = realWins > 0 ? pct(realWinsWithBoost, realWins) : 0.0;
+        double winnerBoostRate = realWinsCount > 0 ? pct(realWinsWithBoost, realWinsCount) : 0.0;
 
         return new GameAnalyticsSummary(
-                from, to,
+                effectiveFrom, effectiveTo,
                 totalGames,
                 totalRealRevenue, totalPrizesAwarded, totalBoostRevenue,
                 totalRetained, retentionRate, cumulativeBalance,
-                botWins, realWins, botWinRate,
+                botWinsCount, realWinsCount, botWinRate,
                 avgRealPlayers, avgBotFillRate,
                 uniqueWinners, boostUsageRate,
                 winnerBoostRate
@@ -83,15 +97,17 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     @Override
     @Transactional(readOnly = true)
     public List<TimeSeriesPoint> getTimeSeries(Instant from, Instant to) {
-        List<GameHistory> games = gameHistoryRepository.listByPeriod(from, to);
+        Instant effectiveTo = resolveEffectiveTo(to);
+        Instant effectiveFrom = resolveEffectiveFrom(from, effectiveTo);
+        List<GameHistory> games = gameHistoryRepository.list(GameHistoryQuery.byPeriod(effectiveFrom, effectiveTo));
 
         Map<LocalDate, List<GameHistory>> byDay = games.stream()
                 .collect(Collectors.groupingBy(game ->
                         game.getCompletedAt().atZone(ZoneOffset.UTC).toLocalDate()));
 
         List<LocalDate> allDays = new ArrayList<>();
-        LocalDate cursor = from.atZone(ZoneOffset.UTC).toLocalDate();
-        LocalDate toDay = to.atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate cursor = effectiveFrom.atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate toDay = effectiveTo.atZone(ZoneOffset.UTC).toLocalDate();
         while (!cursor.isAfter(toDay)) {
             allDays.add(cursor);
             cursor = cursor.plusDays(1);
@@ -101,17 +117,20 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             List<GameHistory> dayGames = byDay.getOrDefault(day, List.of());
             BigDecimal revenue = sum(dayGames, GameHistory::getRealPlayersRevenue);
             BigDecimal prizes = sum(dayGames, GameHistory::getPrizeAwarded);
-            long bWins = dayGames.stream().filter(GameHistory::isWinnerIsBot).count();
-            long rWins = dayGames.size() - bWins;
+            long dayBotWins = dayGames.stream().filter(GameHistory::isWinnerIsBot).count();
+            long dayRealWins = dayGames.size() - dayBotWins;
             return new TimeSeriesPoint(day, dayGames.size(), revenue, prizes,
-                    revenue.subtract(prizes), bWins, rWins);
+                    revenue.subtract(prizes), dayBotWins, dayRealWins);
         }).toList();
     }
 
     private BigDecimal sum(List<GameHistory> games,
                            java.util.function.Function<GameHistory, BigDecimal> getter) {
         return games.stream()
-                .map(game -> getter.apply(game) != null ? getter.apply(game) : BigDecimal.ZERO)
+                .map(game -> {
+                    BigDecimal value = getter.apply(game);
+                    return value != null ? value : BigDecimal.ZERO;
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -134,9 +153,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     @Override
     @Transactional(readOnly = true)
     public List<GameHistory> listGames(Instant from, Instant to, int page, int size) {
-        List<GameHistory> all = gameHistoryRepository.listByPeriod(from, to);
-        int start = page * size;
-        if (start >= all.size()) return List.of();
-        return all.subList(start, Math.min(start + size, all.size()));
+        Instant effectiveTo = resolveEffectiveTo(to);
+        Instant effectiveFrom = resolveEffectiveFrom(from, effectiveTo);
+        return gameHistoryRepository.list(GameHistoryQuery.byPeriod(effectiveFrom, effectiveTo, page, size));
     }
 }

@@ -6,7 +6,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -27,14 +31,8 @@ public class BarrelRepositoryAdapter implements BarrelRepository {
 
     @Override
     public List<Barrel> list(BarrelQuery query) {
-        if (query.gameRoomId() != null && query.roundNumber() != null) {
-            return jpa.findByGameRoomIdAndRoundNumber(query.gameRoomId(), query.roundNumber())
-                    .stream().map(this::toDomain).toList();
-        }
-        if (query.gameRoomId() != null) {
-            return jpa.findByGameRoomId(query.gameRoomId()).stream().map(this::toDomain).toList();
-        }
-        return List.of();
+        return jpa.findByQuery(query.id(), query.gameRoomId(), query.roundNumber())
+                .stream().map(this::toDomain).toList();
     }
 
     @Override
@@ -52,13 +50,19 @@ public class BarrelRepositoryAdapter implements BarrelRepository {
     @Override
     @Transactional
     public int updateAll(BarrelQuery query, List<Barrel> barrels) {
-        int updated = 0;
-        for (Barrel barrel : barrels) {
-            if (barrel.getWeight() != null) {
-                updated += jpa.updateWeight(barrel.getId(), barrel.getWeight());
-            }
+        List<Barrel> barrelsWithWeight = barrels.stream()
+                .filter(barrel -> barrel.getWeight() != null)
+                .toList();
+        if (barrelsWithWeight.isEmpty()) {
+            return 0;
         }
-        return updated;
+        List<UUID> ids = barrelsWithWeight.stream().map(Barrel::getId).toList();
+        Map<UUID, BigDecimal> weightById = barrelsWithWeight.stream()
+                .collect(Collectors.toMap(Barrel::getId, Barrel::getWeight));
+        List<BarrelJpa> jpaEntities = jpa.findAllById(ids);
+        jpaEntities.forEach(entity -> entity.setWeight(weightById.get(entity.getId())));
+        jpa.saveAll(jpaEntities);
+        return jpaEntities.size();
     }
 
     private Barrel toDomain(BarrelJpa barrelJpa) {

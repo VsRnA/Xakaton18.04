@@ -20,14 +20,8 @@ public class RoundResultRepositoryAdapter implements RoundResultRepository {
 
     @Override
     public Optional<RoundResult> find(RoundResultQuery query) {
-        if (query.id() != null) {
-            return jpa.findById(query.id()).map(this::toDomain);
-        }
-        if (query.gameRoomId() != null && query.roundNumber() != null) {
-            return jpa.findByGameRoomIdAndRoundNumber(query.gameRoomId(), query.roundNumber())
-                    .map(this::toDomain);
-        }
-        return Optional.empty();
+        return jpa.findByQuery(query.id(), query.gameRoomId(), query.roundNumber(), query.status())
+                .stream().findFirst().map(this::toDomain);
     }
 
     @Override
@@ -51,15 +45,9 @@ public class RoundResultRepositoryAdapter implements RoundResultRepository {
     }
 
     private RoundResultJpa findJpa(RoundResultQuery query) {
-        if (query.id() != null) {
-            return jpa.findById(query.id())
-                    .orElseThrow(() -> ApiException.notFound("RoundResult", query.id().toString()));
-        }
-        if (query.gameRoomId() != null && query.roundNumber() != null) {
-            return jpa.findByGameRoomIdAndRoundNumber(query.gameRoomId(), query.roundNumber())
-                    .orElseThrow(() -> ApiException.notFound("RoundResult", buildDetail(query)));
-        }
-        throw ApiException.notFound("RoundResult", "unknown");
+        return jpa.findByQuery(query.id(), query.gameRoomId(), query.roundNumber(), query.status())
+                .stream().findFirst()
+                .orElseThrow(() -> ApiException.notFound("RoundResult", buildDetail(query)));
     }
 
     private String buildDetail(RoundResultQuery query) {

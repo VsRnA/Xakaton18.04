@@ -10,7 +10,7 @@ import com.vsrna.backend.domain.user.User;
 import com.vsrna.backend.domain.user.UserQuery;
 import com.vsrna.backend.domain.user.UserRepository;
 import com.vsrna.backend.domain.user.UserRole;
-import com.vsrna.backend.presentation.dto.UserDto;
+import com.vsrna.backend.presentation.dto.user.UserDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;

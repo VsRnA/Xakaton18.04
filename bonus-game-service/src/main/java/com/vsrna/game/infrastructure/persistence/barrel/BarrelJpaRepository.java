@@ -10,10 +10,21 @@ import java.util.List;
 import java.util.UUID;
 
 public interface BarrelJpaRepository extends JpaRepository<BarrelJpa, UUID> {
-    List<BarrelJpa> findByGameRoomIdAndRoundNumber(UUID gameRoomId, int roundNumber);
-    List<BarrelJpa> findByGameRoomId(UUID gameRoomId);
+
+    @Query("""
+            SELECT barrel FROM BarrelJpa barrel
+            WHERE (:id IS NULL OR barrel.id = :id)
+            AND (:gameRoomId IS NULL OR barrel.gameRoomId = :gameRoomId)
+            AND (:roundNumber IS NULL OR barrel.roundNumber = :roundNumber)
+            ORDER BY barrel.displayOrder ASC
+            """)
+    List<BarrelJpa> findByQuery(
+            @Param("id") UUID id,
+            @Param("gameRoomId") UUID gameRoomId,
+            @Param("roundNumber") Integer roundNumber
+    );
 
     @Modifying
-    @Query("UPDATE BarrelJpa b SET b.weight = :weight WHERE b.id = :id")
+    @Query("UPDATE BarrelJpa barrel SET barrel.weight = :weight WHERE barrel.id = :id")
     int updateWeight(@Param("id") UUID id, @Param("weight") BigDecimal weight);
 }

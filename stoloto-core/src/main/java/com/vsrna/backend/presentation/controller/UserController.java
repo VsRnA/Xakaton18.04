@@ -2,7 +2,7 @@ package com.vsrna.backend.presentation.controller;
 
 import com.vsrna.backend.application.user.UserService;
 import com.vsrna.backend.domain.exception.ApiException;
-import com.vsrna.backend.presentation.dto.UserDto;
+import com.vsrna.backend.presentation.dto.user.UserDto;
 import com.vsrna.backend.presentation.filter.AuthTokenFilter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

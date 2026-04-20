@@ -20,6 +20,7 @@ import com.vsrna.game.domain.participant.ParticipantStatus;
 import com.vsrna.game.domain.rng.RngCommitment;
 import com.vsrna.game.domain.rng.RngPort;
 import com.vsrna.game.domain.round.ParticipantBarrelSelection;
+import com.vsrna.game.domain.round.ParticipantBarrelSelectionQuery;
 import com.vsrna.game.domain.round.ParticipantBarrelSelectionRepository;
 import com.vsrna.game.domain.round.ParticipantRoundEntry;
 import com.vsrna.game.domain.round.ParticipantRoundEntryPatch;
@@ -68,7 +69,7 @@ public class RoundLifecycleService {
 
     @Transactional
     public void startRound(UUID roomId, int roundNumber) {
-        GameRoomStatus newStatus = roundNumber == 1 ? GameRoomStatus.ROUND_1 : GameRoomStatus.ROUND_2;
+        GameRoomStatus newStatus = roundNumber == RoundConstants.ROUND_1 ? GameRoomStatus.ROUND_1 : GameRoomStatus.ROUND_2;
         gameRoomRepository.update(GameRoomQuery.byId(roomId),
                 new GameRoomPatch(newStatus, null, null, Instant.now(), null, null));
 
@@ -103,21 +104,15 @@ public class RoundLifecycleService {
         }
         barrelRepository.updateAll(BarrelQuery.byRoomAndRound(roomId, roundNumber), barrels);
 
-        GameRoomStatus decisionStatus = roundNumber == 1
+        GameRoomStatus decisionStatus = roundNumber == RoundConstants.ROUND_1
                 ? GameRoomStatus.BOOST_DECISION_1 : GameRoomStatus.BOOST_DECISION_2;
         gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.status(decisionStatus));
 
-        Map<String, Object> weightsPayload = new LinkedHashMap<>();
-        weightsPayload.put("type", "WEIGHTS_REVEALED");
-        weightsPayload.put("roundNumber", roundNumber);
-        Map<String, Object> weightMap = new LinkedHashMap<>();
-        for (Barrel barrel : barrels) weightMap.put(barrel.getId().toString(), barrel.getWeight());
-        weightsPayload.put("barrelWeights", weightMap);
-        weightsPayload.put("seedHash", roundResult.getSeedHash());
-        weightsPayload.put("rawSeed", roundResult.getRawSeed());
-        weightsPayload.put("phase", "BOOST_DECISION");
-        weightsPayload.put("expiresAt", Instant.now().plusSeconds(5).toEpochMilli());
-        notifierPort.publishRoundEvent(roomId, weightsPayload);
+        notifierPort.publishRoundEvent(roomId, Map.of(
+                "type", "BOOST_DECISION_STARTED",
+                "roundNumber", roundNumber,
+                "expiresAt", Instant.now().plusSeconds(5).toEpochMilli()
+        ));
 
         schedulerPort.scheduleBoostDecisionEnd(roomId, roundNumber);
     }
@@ -129,15 +124,44 @@ public class RoundLifecycleService {
         var roundResult = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, roundNumber));
         roundResultRepository.update(RoundResultQuery.byId(roundResult.getId()), RoundResultPatch.boostWindow());
 
-        GameRoomStatus boostStatus = roundNumber == 1
+        GameRoomStatus boostStatus = roundNumber == RoundConstants.ROUND_1
                 ? GameRoomStatus.BOOST_WINDOW_1 : GameRoomStatus.BOOST_WINDOW_2;
         gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.status(boostStatus));
 
-        notifierPort.publishRoundEvent(roomId, Map.of(
-                "type", "BOOST_WINDOW_STARTED",
-                "roundNumber", roundNumber,
-                "expiresAt", Instant.now().plusSeconds(5).toEpochMilli()
-        ));
+        List<Barrel> barrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
+        Map<UUID, BigDecimal> barrelWeights = new HashMap<>();
+        for (Barrel barrel : barrels) barrelWeights.put(barrel.getId(), barrel.getWeight());
+
+        // Вычисляем эффект буста для каждого участника, купившего буст
+        Map<String, Object> boostEffects = new LinkedHashMap<>();
+        List<ParticipantRoundEntry> entries = entryRepository.list(
+                ParticipantRoundEntryQuery.byRoundResult(roundResult.getId()));
+        for (ParticipantRoundEntry entry : entries) {
+            if (!entry.isBoostPurchased()) continue;
+            List<ParticipantBarrelSelection> selections = selectionRepository.list(
+                    ParticipantBarrelSelectionQuery.byEntry(entry.getId()));
+            RoundScoringUtils.BoostEffect effect = RoundScoringUtils.computeBoostEffect(selections, barrelWeights);
+            if (effect != null) {
+                Map<String, Object> effectData = new LinkedHashMap<>();
+                effectData.put("barrelId", effect.barrelId().toString());
+                effectData.put("originalWeight", effect.originalWeight());
+                effectData.put("boostedWeight", effect.boostedWeight());
+                boostEffects.put(entry.getParticipantId().toString(), effectData);
+            }
+        }
+
+        Map<String, Object> weightMap = new LinkedHashMap<>();
+        for (Barrel barrel : barrels) weightMap.put(barrel.getId().toString(), barrel.getWeight());
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", "BOOST_WINDOW_STARTED");
+        payload.put("roundNumber", roundNumber);
+        payload.put("barrelWeights", weightMap);
+        payload.put("seedHash", roundResult.getSeedHash());
+        payload.put("rawSeed", roundResult.getRawSeed());
+        payload.put("boostEffects", boostEffects);
+        payload.put("expiresAt", Instant.now().plusSeconds(5).toEpochMilli());
+        notifierPort.publishRoundEvent(roomId, payload);
 
         schedulerPort.scheduleBoostWindowEnd(roomId, roundNumber);
     }
@@ -190,7 +214,7 @@ public class RoundLifecycleService {
         roundCompletedPayload.put("disqualifiedIds", disqualifiedIds);
         notifierPort.publishRoundEvent(roomId, roundCompletedPayload);
 
-        if (roundNumber == 1) {
+        if (roundNumber == RoundConstants.ROUND_1) {
             advanceToFinal(roomId, entries, winCriteria);
         } else {
             prizeService.distributePrize(roomId);
@@ -199,7 +223,7 @@ public class RoundLifecycleService {
 
     private List<ParticipantRoundEntry> addDefaultEntriesForAbsentParticipants(
             List<ParticipantRoundEntry> entries, UUID roundResultId, UUID roomId, int roundNumber) {
-        ParticipantStatus statusForRound = roundNumber == 1 ? ParticipantStatus.ACTIVE : ParticipantStatus.FINALIST;
+        ParticipantStatus statusForRound = roundNumber == RoundConstants.ROUND_1 ? ParticipantStatus.ACTIVE : ParticipantStatus.FINALIST;
         List<GameParticipant> allParticipants = participantRepository.list(
                 GameParticipantQuery.byRoomAndStatus(roomId, statusForRound));
 
@@ -284,7 +308,7 @@ public class RoundLifecycleService {
                 "winCriteria", winCriteria
         ));
 
-        startRound(roomId, 2);
+        startRound(roomId, RoundConstants.ROUND_2);
 
         balanceCompensationHelper.scheduleRelease(eliminated, roomId);
     }

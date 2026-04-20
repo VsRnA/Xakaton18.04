@@ -1,4 +1,4 @@
-package com.vsrna.backend.infrastructure.persistence;
+package com.vsrna.backend.infrastructure.persistence.user;
 
 import com.vsrna.backend.domain.exception.ApiException;
 import com.vsrna.backend.domain.user.User;
@@ -24,16 +24,7 @@ public class UserRepositoryAdapter implements UserRepository {
 
     @Override
     public Optional<User> find(UserQuery query) {
-        if (query.guid() != null) {
-            return jpa.findById(query.guid());
-        }
-        if (query.phone() != null) {
-            return jpa.findByPhone(query.phone());
-        }
-        if (query.username() != null) {
-            return jpa.findByUsername(query.username());
-        }
-        return Optional.empty();
+        return jpa.findByQuery(query.guid(), query.phone(), query.username());
     }
 
     @Override

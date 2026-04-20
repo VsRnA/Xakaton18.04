@@ -5,11 +5,14 @@ import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.domain.exception.ApiException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.math.BigDecimal;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.UUID;
 
 @Slf4j
@@ -23,9 +26,17 @@ public class CoreServiceClient implements BalancePort {
     public CoreServiceClient(
             @Value("${app.core.url}") String coreUrl,
             @Value("${app.internal.secret}") String internalSecret,
+            @Value("${app.core.connect-timeout-seconds:5}") int connectTimeoutSeconds,
+            @Value("${app.core.read-timeout-seconds:10}") int readTimeoutSeconds,
             GameEventPort gameEventPort) {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(connectTimeoutSeconds))
+                .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
         this.restClient = RestClient.builder()
                 .baseUrl(coreUrl)
+                .requestFactory(factory)
                 .build();
         this.internalSecret = internalSecret;
         this.gameEventPort = gameEventPort;

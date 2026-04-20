@@ -1,4 +1,4 @@
-package com.vsrna.backend.infrastructure.persistence;
+package com.vsrna.backend.infrastructure.persistence.role;
 
 import com.vsrna.backend.domain.exception.ApiException;
 import com.vsrna.backend.domain.role.Role;
@@ -22,13 +22,7 @@ public class RoleRepositoryAdapter implements RoleRepository {
 
     @Override
     public Optional<Role> find(RoleQuery query) {
-        if (query.guid() != null) {
-            return jpa.findById(query.guid());
-        }
-        if (query.keyword() != null) {
-            return jpa.findByKeyword(query.keyword());
-        }
-        return Optional.empty();
+        return jpa.findByQuery(query.guid(), query.keyword());
     }
 
     @Override

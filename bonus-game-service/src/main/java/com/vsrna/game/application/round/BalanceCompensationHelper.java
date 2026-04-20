@@ -17,6 +17,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BalanceCompensationHelper {
 
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long RETRY_DELAY_MS = 200;
+
     private final BalancePort balancePort;
 
     public void scheduleRelease(List<GameParticipant> participants, UUID roomId) {
@@ -25,13 +28,23 @@ public class BalanceCompensationHelper {
             @Override
             public void afterCommit() {
                 for (GameParticipant participant : participants) {
-                    try {
-                        balancePort.release(participant.getUserId(), participant.getReservedPoints(), roomId);
-                    } catch (Exception e) {
-                        log.error("COMPENSATION NEEDED: failed to release balance userId={}, roomId={}: {}",
-                                participant.getUserId(), roomId, e.getMessage());
-                    }
+                    withRetry(
+                        () -> balancePort.release(participant.getUserId(), participant.getReservedPoints(), roomId),
+                        "release userId=" + participant.getUserId() + " roomId=" + roomId
+                    );
                 }
+            }
+        });
+    }
+
+    public void scheduleAward(UUID userId, BigDecimal amount, UUID roomId) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                withRetry(
+                    () -> balancePort.award(userId, amount, roomId),
+                    "award userId=" + userId + " amount=" + amount + " roomId=" + roomId
+                );
             }
         });
     }
@@ -40,13 +53,35 @@ public class BalanceCompensationHelper {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                try {
-                    balancePort.deduct(userId, amount, roomId);
-                } catch (Exception e) {
-                    log.error("COMPENSATION NEEDED: failed to deduct balance userId={}, roomId={}: {}",
-                            userId, roomId, e.getMessage());
-                }
+                withRetry(
+                    () -> balancePort.deduct(userId, amount, roomId),
+                    "deduct userId=" + userId + " roomId=" + roomId
+                );
             }
         });
+    }
+
+    private void withRetry(Runnable action, String description) {
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                action.run();
+                return;
+            } catch (Exception e) {
+                if (attempt == MAX_ATTEMPTS) {
+                    log.error("COMPENSATION NEEDED [attempt {}/{}]: {}: {}",
+                            attempt, MAX_ATTEMPTS, description, e.getMessage());
+                } else {
+                    log.warn("Balance operation failed [attempt {}/{}], retrying in {}ms: {}",
+                            attempt, MAX_ATTEMPTS, RETRY_DELAY_MS * attempt, description);
+                    try {
+                        Thread.sleep(RETRY_DELAY_MS * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.error("COMPENSATION NEEDED (interrupted): {}", description);
+                        return;
+                    }
+                }
+            }
+        }
     }
 }

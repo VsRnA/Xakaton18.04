@@ -1,8 +1,8 @@
 package com.vsrna.game.application.prize;
 
-import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
+import com.vsrna.game.application.round.BalanceCompensationHelper;
 import com.vsrna.game.application.round.RoundScoringUtils;
 import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.gameroom.*;
@@ -13,8 +13,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -36,9 +34,9 @@ public class PrizeServiceImpl implements PrizeService {
     private final RoundResultRepository roundResultRepository;
     private final ParticipantRoundEntryRepository entryRepository;
     private final GameHistoryRepository gameHistoryRepository;
-    private final BalancePort balancePort;
     private final GameEventPort gameEventPort;
     private final GameNotifierPort notifierPort;
+    private final BalanceCompensationHelper balanceCompensationHelper;
 
     @Override
     @Transactional
@@ -125,32 +123,13 @@ public class PrizeServiceImpl implements PrizeService {
 
         log.info("Room {} finished. Winner: {}, prize: {}", roomId, winner.getId(), prizeAwarded);
 
-        final GameParticipant finalWinner = winner;
-        final BigDecimal finalPrizeAwarded = prizeAwarded;
-        final List<GameParticipant> finalistsCopy = new ArrayList<>(finalists);
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                for (GameParticipant participant : finalistsCopy) {
-                    if (participant.isRealPlayer()) {
-                        try {
-                            balancePort.release(participant.getUserId(), participant.getReservedPoints(), roomId);
-                        } catch (Exception e) {
-                            log.error("COMPENSATION NEEDED: failed to release balance for finalist " +
-                                      "userId={}, roomId={}: {}", participant.getUserId(), roomId, e.getMessage());
-                        }
-                    }
-                }
-                if (finalWinner.isRealPlayer()) {
-                    try {
-                        balancePort.award(finalWinner.getUserId(), finalPrizeAwarded, roomId);
-                    } catch (Exception e) {
-                        log.error("COMPENSATION NEEDED: failed to award prize " +
-                                  "userId={}, roomId={}, amount={}: {}",
-                                  finalWinner.getUserId(), roomId, finalPrizeAwarded, e.getMessage());
-                    }
-                }
-            }
-        });
+        List<GameParticipant> realFinalists = finalists.stream()
+                .filter(GameParticipant::isRealPlayer)
+                .toList();
+        balanceCompensationHelper.scheduleRelease(realFinalists, roomId);
+
+        if (winner.isRealPlayer()) {
+            balanceCompensationHelper.scheduleAward(winner.getUserId(), prizeAwarded, roomId);
+        }
     }
 }

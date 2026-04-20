@@ -1,5 +1,6 @@
 package com.vsrna.game.application.bot;
 
+import com.vsrna.game.application.round.RoundConstants;
 import com.vsrna.game.domain.barrel.*;
 import com.vsrna.game.domain.gameroom.GameRoomConfig;
 import com.vsrna.game.domain.gameroom.GameRoomConfigQuery;
@@ -52,20 +53,21 @@ public class BotServiceImpl implements BotService {
         GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
         List<Barrel> barrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
 
-        ParticipantStatus botStatus = roundNumber == 2 ? ParticipantStatus.FINALIST : ParticipantStatus.ACTIVE;
+        ParticipantStatus botStatus = roundNumber == RoundConstants.ROUND_2 ? ParticipantStatus.FINALIST : ParticipantStatus.ACTIVE;
         List<GameParticipant> bots = participantRepository.list(
                 GameParticipantQuery.byRoomAndStatus(roomId, botStatus))
                 .stream().filter(GameParticipant::isBot).toList();
 
         if (bots.isEmpty()) return;
 
-        List<Barrel> orderedBarrels = selectBarrels(barrels, barrelWeights, config.getMaxBarrelSelection(),
-                protectionMode);
-
         log.info("Submitting bot selections for room {} round {} protectionMode={} bots={}",
                 roomId, roundNumber, protectionMode, bots.size());
 
         for (GameParticipant bot : bots) {
+            // Each bot gets its own barrel selection to avoid identical play patterns
+            List<Barrel> orderedBarrels = selectBarrels(barrels, barrelWeights, config.getMaxBarrelSelection(),
+                    protectionMode);
+
             ParticipantRoundEntry entry = new ParticipantRoundEntry(roundResult.getId(), bot.getId());
             entry.setSelectionCount(orderedBarrels.size());
             entry.setSelectionTimestamp(Instant.now());

@@ -1,4 +1,4 @@
-package com.vsrna.backend.presentation.dto;
+package com.vsrna.backend.presentation.dto.user;
 
 import com.vsrna.backend.domain.user.User;
 import jakarta.validation.constraints.NotBlank;

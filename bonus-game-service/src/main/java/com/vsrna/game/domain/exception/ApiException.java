@@ -14,6 +14,7 @@ public class ApiException extends RuntimeException {
         ERR_CLIENT_BAD_REQUEST,
         ERR_CLIENT_REQUEST_VALIDATION,
         ERR_CLIENT_AUTH,
+        ERR_CLIENT_FORBIDDEN,
         ERR_CLIENT_ENTITY_ALREADY_EXIST,
         ERR_CLIENT_ENTITY_NOT_FOUND,
         ERR_CLIENT_INSUFFICIENT_BALANCE
@@ -54,6 +55,10 @@ public class ApiException extends RuntimeException {
 
     public static ApiException unauthorized(String message) {
         return new ApiException(message, ErrorCode.ERR_CLIENT_AUTH, HttpStatus.UNAUTHORIZED);
+    }
+
+    public static ApiException forbidden(String message) {
+        return new ApiException(message, ErrorCode.ERR_CLIENT_FORBIDDEN, HttpStatus.FORBIDDEN);
     }
 
     public static ApiException alreadyExists(String entity, String detail) {

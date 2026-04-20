@@ -22,14 +22,8 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
 
     @Override
     public Optional<ParticipantRoundEntry> find(ParticipantRoundEntryQuery query) {
-        if (query.id() != null) {
-            return jpa.findById(query.id()).map(this::toDomain);
-        }
-        if (query.roundResultId() != null && query.participantId() != null) {
-            return jpa.findByRoundResultIdAndParticipantId(query.roundResultId(), query.participantId())
-                    .map(this::toDomain);
-        }
-        return Optional.empty();
+        return jpa.findByQuery(query.id(), query.roundResultId(), query.participantId(), query.rankInRound())
+                .stream().findFirst().map(this::toDomain);
     }
 
     @Override
@@ -40,10 +34,8 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
 
     @Override
     public List<ParticipantRoundEntry> list(ParticipantRoundEntryQuery query) {
-        if (query.roundResultId() != null) {
-            return jpa.findByRoundResultId(query.roundResultId()).stream().map(this::toDomain).toList();
-        }
-        return List.of();
+        return jpa.findByQuery(query.id(), query.roundResultId(), query.participantId(), query.rankInRound())
+                .stream().map(this::toDomain).toList();
     }
 
     @Override
@@ -55,7 +47,6 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
 
     private void applyPatch(ParticipantRoundEntryJpa entity, ParticipantRoundEntryPatch patch) {
         if (patch.boostPurchased() != null) entity.setBoostPurchased(patch.boostPurchased());
-        if (patch.boostedBarrelId() != null) entity.setBoostedBarrelId(patch.boostedBarrelId());
         if (patch.totalScore() != null) entity.setTotalScore(patch.totalScore());
         if (patch.selectionTimestamp() != null) entity.setSelectionTimestamp(patch.selectionTimestamp());
         if (patch.selectionCount() != null) entity.setSelectionCount(patch.selectionCount());
@@ -68,15 +59,9 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
     }
 
     private ParticipantRoundEntryJpa findJpa(ParticipantRoundEntryQuery query) {
-        if (query.id() != null) {
-            return jpa.findById(query.id())
-                    .orElseThrow(() -> ApiException.notFound("ParticipantRoundEntry", query.id().toString()));
-        }
-        if (query.roundResultId() != null && query.participantId() != null) {
-            return jpa.findByRoundResultIdAndParticipantId(query.roundResultId(), query.participantId())
-                    .orElseThrow(() -> ApiException.notFound("ParticipantRoundEntry", buildDetail(query)));
-        }
-        throw ApiException.notFound("ParticipantRoundEntry", "unknown");
+        return jpa.findByQuery(query.id(), query.roundResultId(), query.participantId(), query.rankInRound())
+                .stream().findFirst()
+                .orElseThrow(() -> ApiException.notFound("ParticipantRoundEntry", buildDetail(query)));
     }
 
     private String buildDetail(ParticipantRoundEntryQuery query) {
@@ -90,7 +75,6 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
         entry.setRoundResultId(jpaEntity.getRoundResultId());
         entry.setParticipantId(jpaEntity.getParticipantId());
         entry.setBoostPurchased(jpaEntity.isBoostPurchased());
-        entry.setBoostedBarrelId(jpaEntity.getBoostedBarrelId());
         entry.setTotalScore(jpaEntity.getTotalScore());
         entry.setSelectionTimestamp(jpaEntity.getSelectionTimestamp());
         entry.setSelectionCount(jpaEntity.getSelectionCount());
@@ -104,7 +88,6 @@ public class ParticipantRoundEntryRepositoryAdapter implements ParticipantRoundE
         jpaEntity.setRoundResultId(entry.getRoundResultId());
         jpaEntity.setParticipantId(entry.getParticipantId());
         jpaEntity.setBoostPurchased(entry.isBoostPurchased());
-        jpaEntity.setBoostedBarrelId(entry.getBoostedBarrelId());
         jpaEntity.setTotalScore(entry.getTotalScore());
         jpaEntity.setSelectionTimestamp(entry.getSelectionTimestamp());
         jpaEntity.setSelectionCount(entry.getSelectionCount());

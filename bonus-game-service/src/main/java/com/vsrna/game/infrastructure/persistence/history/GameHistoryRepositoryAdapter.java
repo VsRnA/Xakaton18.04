@@ -4,10 +4,10 @@ import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.history.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -25,36 +25,32 @@ public class GameHistoryRepositoryAdapter implements GameHistoryRepository {
 
     @Override
     public Optional<GameHistory> find(GameHistoryQuery query) {
-        if (query.id() != null) {
-            return jpa.findById(query.id()).map(this::toDomain);
-        }
-        if (query.gameRoomId() != null) {
-            return jpa.findByGameRoomId(query.gameRoomId()).map(this::toDomain);
-        }
-        return Optional.empty();
+        List<GameHistoryJpa> results = jpa.findByQuery(
+                query.id(), query.gameRoomId(), query.winnerUserId(),
+                query.from(), query.to(),
+                PageRequest.of(0, 1)
+        );
+        return results.isEmpty() ? Optional.empty() : Optional.of(toDomain(results.get(0)));
     }
 
     @Override
     public GameHistory get(GameHistoryQuery query) {
         return find(query).orElseThrow(() ->
                 ApiException.notFound("GameHistory", query.gameRoomId() != null
-                        ? "room=" + query.gameRoomId() : query.id().toString()));
+                        ? "room=" + query.gameRoomId()
+                        : String.valueOf(query.id())));
     }
 
     @Override
     public List<GameHistory> list(GameHistoryQuery query) {
-        int page = Math.max(query.page(), 0);
-        int size = query.size() > 0 ? query.size() : 20;
-        if (query.winnerUserId() != null) {
-            return jpa.findByWinnerUserId(query.winnerUserId(), PageRequest.of(page, size))
-                    .stream().map(this::toDomain).toList();
-        }
-        return jpa.findAll(PageRequest.of(page, size)).getContent().stream().map(this::toDomain).toList();
-    }
-
-    @Override
-    public List<GameHistory> listByPeriod(Instant from, Instant to) {
-        return jpa.findByCompletedAtBetween(from, to).stream().map(this::toDomain).toList();
+        Pageable pageable = query.size() == Integer.MAX_VALUE
+                ? Pageable.unpaged()
+                : PageRequest.of(Math.max(query.page(), 0), Math.max(query.size(), 1));
+        return jpa.findByQuery(
+                query.id(), query.gameRoomId(), query.winnerUserId(),
+                query.from(), query.to(),
+                pageable
+        ).stream().map(this::toDomain).toList();
     }
 
     @Override

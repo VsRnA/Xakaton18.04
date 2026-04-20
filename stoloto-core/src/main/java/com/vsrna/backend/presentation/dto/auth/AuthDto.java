@@ -1,5 +1,6 @@
-package com.vsrna.backend.presentation.dto;
+package com.vsrna.backend.presentation.dto.auth;
 
+import com.vsrna.backend.presentation.dto.user.UserDto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;

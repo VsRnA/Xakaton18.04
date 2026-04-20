@@ -21,13 +21,8 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
 
     @Override
     public Optional<GameParticipant> find(GameParticipantQuery query) {
-        if (query.id() != null) {
-            return jpa.findById(query.id()).map(this::toDomain);
-        }
-        if (query.gameRoomId() != null && query.userId() != null) {
-            return jpa.findByGameRoomIdAndUserId(query.gameRoomId(), query.userId()).map(this::toDomain);
-        }
-        return Optional.empty();
+        return jpa.findByQuery(query.id(), query.gameRoomId(), query.userId(), query.status())
+                .stream().findFirst().map(this::toDomain);
     }
 
     @Override
@@ -38,14 +33,8 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
 
     @Override
     public List<GameParticipant> list(GameParticipantQuery query) {
-        if (query.gameRoomId() != null && query.status() != null) {
-            return jpa.findByGameRoomIdAndStatus(query.gameRoomId(), query.status())
-                    .stream().map(this::toDomain).toList();
-        }
-        if (query.gameRoomId() != null) {
-            return jpa.findByGameRoomId(query.gameRoomId()).stream().map(this::toDomain).toList();
-        }
-        return List.of();
+        return jpa.findByQuery(query.id(), query.gameRoomId(), query.userId(), query.status())
+                .stream().map(this::toDomain).toList();
     }
 
     @Override
@@ -71,15 +60,9 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
     }
 
     private GameParticipantJpa findJpa(GameParticipantQuery query) {
-        if (query.id() != null) {
-            return jpa.findById(query.id())
-                    .orElseThrow(() -> ApiException.notFound("GameParticipant", query.id().toString()));
-        }
-        if (query.gameRoomId() != null && query.userId() != null) {
-            return jpa.findByGameRoomIdAndUserId(query.gameRoomId(), query.userId())
-                    .orElseThrow(() -> ApiException.notFound("GameParticipant", buildDetail(query)));
-        }
-        throw ApiException.notFound("GameParticipant", "unknown");
+        return jpa.findByQuery(query.id(), query.gameRoomId(), query.userId(), query.status())
+                .stream().findFirst()
+                .orElseThrow(() -> ApiException.notFound("GameParticipant", buildDetail(query)));
     }
 
     private String buildDetail(GameParticipantQuery query) {

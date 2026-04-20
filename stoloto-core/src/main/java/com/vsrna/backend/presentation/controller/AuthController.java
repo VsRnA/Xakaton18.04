@@ -1,7 +1,7 @@
 package com.vsrna.backend.presentation.controller;
 
 import com.vsrna.backend.application.auth.AuthService;
-import com.vsrna.backend.presentation.dto.AuthDto;
+import com.vsrna.backend.presentation.dto.auth.AuthDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

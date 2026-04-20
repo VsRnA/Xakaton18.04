@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.Collection;
 
 @RestController
 @RequestMapping("/api/v1/game/rooms")
@@ -45,7 +46,7 @@ public class GameRoomController {
     public GameRoomDto.CreateRoomResponse createRoom(
             @Valid @RequestBody GameRoomDto.CreateGameRoomRequest request,
             HttpServletRequest httpRequest) {
-        UUID userId = requireAuth(httpRequest);
+        UUID userId = requireAdminAuth(httpRequest);
         CreateGameRoomCommand command = new CreateGameRoomCommand(
                 userId,
                 request.maxPlayers(),
@@ -76,16 +77,9 @@ public class GameRoomController {
             @RequestParam(required = false) Boolean onlyWithSlots,
             HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
-        boolean hasFilters = entryFeeMin != null || entryFeeMax != null
-                || maxPlayers != null || Boolean.TRUE.equals(onlyWithSlots);
-        if (hasFilters) {
-            return gameRoomService.listRoomsFiltered(
-                            GameRoomQuery.filtered(status, entryFeeMin, entryFeeMax, maxPlayers, onlyWithSlots, page, size))
-                    .stream().map(this::toResponse).toList();
-        }
-        return gameRoomService.listRooms(status, page, size).stream()
-                .map(this::toResponse)
-                .toList();
+        return gameRoomService.listRooms(
+                        GameRoomQuery.filtered(status, entryFeeMin, entryFeeMax, maxPlayers, onlyWithSlots, page, size))
+                .stream().map(this::toResponse).toList();
     }
 
     @Operation(summary = "Подобрать комнату",
@@ -105,7 +99,7 @@ public class GameRoomController {
     public GameRoomDto.ConfigEvaluationResponse evaluateConfig(
             @Valid @RequestBody GameRoomDto.CreateGameRoomRequest request,
             HttpServletRequest httpRequest) {
-        requireAuth(httpRequest);
+        requireAdminAuth(httpRequest);
         CreateGameRoomCommand command = new CreateGameRoomCommand(
                 null, request.maxPlayers(), request.entryFeeAmount(),
                 request.winnerPayoutPercentage(), request.boostCostAmount(),
@@ -130,7 +124,7 @@ public class GameRoomController {
     @DeleteMapping("/admin/{roomId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelRoom(@PathVariable UUID roomId, HttpServletRequest httpRequest) {
-        UUID adminUserId = requireAuth(httpRequest);
+        UUID adminUserId = requireAdminAuth(httpRequest);
         gameRoomService.cancelRoom(roomId, adminUserId);
     }
 
@@ -224,6 +218,16 @@ public class GameRoomController {
         UUID userId = (UUID) request.getAttribute(AuthTokenFilter.USER_ID_ATTR);
         if (userId == null) {
             throw ApiException.unauthorized("bearer token required");
+        }
+        return userId;
+    }
+
+    @SuppressWarnings("unchecked")
+    private UUID requireAdminAuth(HttpServletRequest request) {
+        UUID userId = requireAuth(request);
+        Collection<String> roles = (Collection<String>) request.getAttribute(AuthTokenFilter.ROLES_ATTR);
+        if (roles == null || !roles.contains("ADMIN")) {
+            throw ApiException.forbidden("access denied: admin role required");
         }
         return userId;
     }

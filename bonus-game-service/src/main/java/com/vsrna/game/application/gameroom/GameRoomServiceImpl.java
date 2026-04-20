@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -44,11 +46,10 @@ public class GameRoomServiceImpl implements GameRoomService {
     @Override
     @Transactional
     public GameRoomDetails createRoom(CreateGameRoomCommand command) {
-        GameRoom room = new GameRoom(command.createdByUserId(), BigDecimal.ZERO);
-        room = gameRoomRepository.create(room);
+        GameRoom createdRoom = gameRoomRepository.create(new GameRoom(command.createdByUserId(), BigDecimal.ZERO));
 
         GameRoomConfig config = new GameRoomConfig(
-                room.getId(),
+                createdRoom.getId(),
                 command.maxPlayers(),
                 command.entryFeeAmount(),
                 command.winnerPayoutPercentage(),
@@ -58,21 +59,21 @@ public class GameRoomServiceImpl implements GameRoomService {
         );
         gameRoomConfigRepository.create(config);
 
-        List<Barrel> barrels = new ArrayList<>();
-        for (int i = 1; i <= RoundConstants.BARRELS_PER_ROUND; i++) {
-            barrels.add(new Barrel(room.getId(), 1, String.format("R1B%02d", i), i));
-        }
-        for (int i = 1; i <= RoundConstants.BARRELS_PER_ROUND; i++) {
-            barrels.add(new Barrel(room.getId(), 2, String.format("R2B%02d", i), i));
-        }
+        List<Barrel> barrels = IntStream.rangeClosed(1, RoundConstants.BARRELS_PER_ROUND)
+                .boxed()
+                .flatMap(barrelNumber -> Stream.of(
+                        new Barrel(createdRoom.getId(), 1, String.format("R1B%02d", barrelNumber), barrelNumber),
+                        new Barrel(createdRoom.getId(), 2, String.format("R2B%02d", barrelNumber), barrelNumber)
+                ))
+                .toList();
         barrelRepository.createAll(barrels);
 
         notifierPort.publishRoomsUpdate(Map.of(
                 "type", "ROOM_CREATED",
-                "roomId", room.getId().toString()
+                "roomId", createdRoom.getId().toString()
         ));
 
-        return new GameRoomDetails(room, config);
+        return new GameRoomDetails(createdRoom, config);
     }
 
     @Override
@@ -88,25 +89,11 @@ public class GameRoomServiceImpl implements GameRoomService {
             throw ApiException.badRequest("Room is full");
         }
 
-        GameParticipant participant = new GameParticipant(roomId, userId, false, displayName, config.getEntryFeeAmount());
-        try {
-            participantRepository.create(participant);
-        } catch (DataIntegrityViolationException e) {
-            throw ApiException.alreadyExists("GameParticipant", "User already joined this room");
-        }
-
-        int newCount = room.getCurrentPlayerCount() + 1;
-        BigDecimal newPrize = room.getPrizePoolAmount().add(config.getEntryFeeAmount());
-        room = gameRoomRepository.update(
-                GameRoomQuery.byId(roomId),
-                new GameRoomPatch(null, newCount, newPrize, null, null, null)
-        );
-
+        // Reserve balance BEFORE any DB writes — fail fast if insufficient funds
         try {
             balancePort.reserve(userId, config.getEntryFeeAmount(), roomId);
         } catch (Exception e) {
-            // Spring откатит транзакцию при re-throw. Ищем альтернативы дешевле.
-            List<GameRoomDetails> alternatives = listRoomsFiltered(
+            List<GameRoomDetails> alternatives = listRooms(
                     GameRoomQuery.filtered(GameRoomStatus.WAITING, BigDecimal.ZERO,
                             config.getEntryFeeAmount().subtract(BigDecimal.ONE),
                             null, true, 0, 3));
@@ -120,6 +107,27 @@ public class GameRoomServiceImpl implements GameRoomService {
                             + config.getEntryFeeAmount(),
                     Map.of("required", config.getEntryFeeAmount(), "suggestedRooms", altList));
         }
+
+        GameParticipant participant = new GameParticipant(roomId, userId, false, displayName, config.getEntryFeeAmount());
+        try {
+            participantRepository.create(participant);
+        } catch (DataIntegrityViolationException e) {
+            // Participant already exists — release the balance we just reserved
+            try {
+                balancePort.release(userId, config.getEntryFeeAmount(), roomId);
+            } catch (Exception re) {
+                log.error("COMPENSATION NEEDED: failed to release balance after duplicate join " +
+                          "userId={}, roomId={}: {}", userId, roomId, re.getMessage());
+            }
+            throw ApiException.alreadyExists("GameParticipant", "User already joined this room");
+        }
+
+        int newCount = room.getCurrentPlayerCount() + 1;
+        BigDecimal newPrize = room.getPrizePoolAmount().add(config.getEntryFeeAmount());
+        room = gameRoomRepository.update(
+                GameRoomQuery.byId(roomId),
+                new GameRoomPatch(null, newCount, newPrize, null, null, null)
+        );
 
         Instant waitTimerExpiresAt = null;
         if (newCount == 1) {
@@ -191,16 +199,8 @@ public class GameRoomServiceImpl implements GameRoomService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<GameRoomDetails> listRooms(GameRoomStatus status, int page, int size) {
-        List<GameRoom> rooms = gameRoomRepository.list(new GameRoomQuery(null, status, null, page, size, null, null, null, null));
-        if (rooms.isEmpty()) return List.of();
-        List<UUID> roomIds = rooms.stream().map(GameRoom::getId).toList();
-        List<GameRoomConfig> configs = gameRoomConfigRepository.listByRoomIds(roomIds);
-        java.util.Map<UUID, GameRoomConfig> configByRoomId = new java.util.HashMap<>();
-        configs.forEach(c -> configByRoomId.put(c.getGameRoomId(), c));
-        return rooms.stream()
-                .map(r -> new GameRoomDetails(r, configByRoomId.get(r.getId())))
-                .toList();
+    public List<GameRoomDetails> listRooms(GameRoomQuery query) {
+        return buildRoomDetails(gameRoomRepository.list(query));
     }
 
     @Override
@@ -220,21 +220,6 @@ public class GameRoomServiceImpl implements GameRoomService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<GameRoomDetails> listRoomsFiltered(GameRoomQuery query) {
-        List<GameRoom> rooms = gameRoomRepository.list(query);
-        if (rooms.isEmpty()) return List.of();
-        List<UUID> roomIds = rooms.stream().map(GameRoom::getId).toList();
-        List<GameRoomConfig> configs = gameRoomConfigRepository.listByRoomIds(roomIds);
-        Map<UUID, GameRoomConfig> configByRoomId = new HashMap<>();
-        configs.forEach(c -> configByRoomId.put(c.getGameRoomId(), c));
-        return rooms.stream()
-                .filter(r -> configByRoomId.containsKey(r.getId()))
-                .map(r -> new GameRoomDetails(r, configByRoomId.get(r.getId())))
-                .toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public GameRoomDetails suggestRoom(BigDecimal targetEntryFee, Integer targetMaxPlayers) {
         BigDecimal feeMin = targetEntryFee != null
                 ? targetEntryFee.multiply(BigDecimal.valueOf(0.8))
@@ -242,17 +227,16 @@ public class GameRoomServiceImpl implements GameRoomService {
         BigDecimal feeMax = targetEntryFee != null
                 ? targetEntryFee.multiply(BigDecimal.valueOf(1.2))
                 : null;
-        List<GameRoomDetails> rooms = listRoomsFiltered(
+        List<GameRoomDetails> rooms = listRooms(
                 GameRoomQuery.filtered(GameRoomStatus.WAITING, feeMin, feeMax, targetMaxPlayers, true, 0, 1));
         if (rooms.isEmpty()) {
             // Расширяем поиск — без фильтра по maxPlayers
-            rooms = listRoomsFiltered(
+            rooms = listRooms(
                     GameRoomQuery.filtered(GameRoomStatus.WAITING, feeMin, feeMax, null, true, 0, 1));
         }
-        if (rooms.isEmpty()) {
-            throw ApiException.notFound("GameRoom", "No suitable WAITING room found for the given parameters");
-        }
-        return rooms.get(0);
+        return rooms.stream()
+                .findFirst()
+                .orElseThrow(() -> ApiException.notFound("GameRoom", "No suitable WAITING room found for the given parameters"));
     }
 
     @Override
@@ -266,7 +250,7 @@ public class GameRoomServiceImpl implements GameRoomService {
         List<NextGameOption> options = new ArrayList<>();
 
         // SAME — та же конфигурация
-        listRoomsFiltered(GameRoomQuery.filtered(
+        listRooms(GameRoomQuery.filtered(
                 GameRoomStatus.WAITING,
                 fee.multiply(BigDecimal.valueOf(0.9)),
                 fee.multiply(BigDecimal.valueOf(1.1)),
@@ -276,14 +260,14 @@ public class GameRoomServiceImpl implements GameRoomService {
 
         // SAFER — вдвое дешевле или на меньше игроков
         BigDecimal saferFee = fee.divide(BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP);
-        listRoomsFiltered(GameRoomQuery.filtered(
+        listRooms(GameRoomQuery.filtered(
                 GameRoomStatus.WAITING, BigDecimal.ZERO, saferFee, null, true, 0, 1))
                 .stream().findFirst()
                 .ifPresent(r -> options.add(new NextGameOption("SAFER", r)));
 
         // RISKIER — вдвое дороже
         BigDecimal riskierFeeMin = fee.multiply(BigDecimal.valueOf(1.5));
-        listRoomsFiltered(GameRoomQuery.filtered(
+        listRooms(GameRoomQuery.filtered(
                 GameRoomStatus.WAITING, riskierFeeMin, null, null, true, 0, 1))
                 .stream().findFirst()
                 .ifPresent(r -> options.add(new NextGameOption("RISKIER", r)));
@@ -303,12 +287,12 @@ public class GameRoomServiceImpl implements GameRoomService {
         // Возвращаем баллы всем реальным участникам
         List<GameParticipant> participants = participantRepository.list(GameParticipantQuery.byRoom(roomId));
         GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
-        for (GameParticipant p : participants) {
-            if (p.isRealPlayer()) {
+        for (GameParticipant participant : participants) {
+            if (participant.isRealPlayer()) {
                 try {
-                    balancePort.release(p.getUserId(), config.getEntryFeeAmount(), roomId);
+                    balancePort.release(participant.getUserId(), config.getEntryFeeAmount(), roomId);
                 } catch (Exception e) {
-                    log.error("Failed to release balance for participant {} in cancelled room {}", p.getId(), roomId, e);
+                    log.error("Failed to release balance for participant {} in cancelled room {}", participant.getId(), roomId, e);
                 }
             }
         }
@@ -321,6 +305,18 @@ public class GameRoomServiceImpl implements GameRoomService {
         ));
 
         log.info("Room {} cancelled by admin {}", roomId, adminUserId);
+    }
+
+    private List<GameRoomDetails> buildRoomDetails(List<GameRoom> rooms) {
+        if (rooms.isEmpty()) return List.of();
+        List<UUID> roomIds = rooms.stream().map(GameRoom::getId).toList();
+        List<GameRoomConfig> configs = gameRoomConfigRepository.listByRoomIds(roomIds);
+        Map<UUID, GameRoomConfig> configByRoomId = new HashMap<>();
+        configs.forEach(config -> configByRoomId.put(config.getGameRoomId(), config));
+        return rooms.stream()
+                .filter(room -> configByRoomId.containsKey(room.getId()))
+                .map(room -> new GameRoomDetails(room, configByRoomId.get(room.getId())))
+                .toList();
     }
 
     @Override

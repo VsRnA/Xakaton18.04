@@ -1,6 +1,6 @@
 package com.vsrna.backend.application.auth;
 
-import com.vsrna.backend.presentation.dto.AuthDto;
+import com.vsrna.backend.presentation.dto.auth.AuthDto;
 
 public interface AuthService {
 

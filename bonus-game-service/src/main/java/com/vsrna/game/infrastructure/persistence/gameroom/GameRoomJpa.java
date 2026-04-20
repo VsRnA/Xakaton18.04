@@ -48,4 +48,8 @@ public class GameRoomJpa {
 
     @Column(name = "\"prizePoolAmount\"", nullable = false, precision = 12, scale = 2)
     private BigDecimal prizePoolAmount;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 }

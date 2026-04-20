@@ -44,4 +44,8 @@ public class RoundResultJpa {
 
     @Column(name = "\"endedAt\"")
     private Instant endedAt;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 }

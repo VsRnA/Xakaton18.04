@@ -1,7 +1,6 @@
 package com.vsrna.game.application.gameroom;
 
 import com.vsrna.game.domain.gameroom.GameRoomQuery;
-import com.vsrna.game.domain.gameroom.GameRoomStatus;
 import com.vsrna.game.domain.participant.GameParticipant;
 
 import java.math.BigDecimal;
@@ -13,8 +12,7 @@ public interface GameRoomService {
     GameRoomDetails createRoom(CreateGameRoomCommand command);
     GameRoomDetails joinRoom(UUID roomId, UUID userId, String displayName);
     void fillWithBots(UUID roomId);
-    List<GameRoomDetails> listRooms(GameRoomStatus status, int page, int size);
-    List<GameRoomDetails> listRoomsFiltered(GameRoomQuery query);
+    List<GameRoomDetails> listRooms(GameRoomQuery query);
     GameRoomDetails getRoom(UUID roomId);
     List<GameParticipant> listParticipants(UUID roomId);
     GameRoomDetails suggestRoom(BigDecimal targetEntryFee, Integer targetMaxPlayers);
