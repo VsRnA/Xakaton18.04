@@ -39,7 +39,9 @@ public class GameRoomConfigRepositoryAdapter implements GameRoomConfigRepository
                 e.getWinnerPayoutPercentage(),
                 e.getBoostCostAmount(),
                 e.isBoostEnabled(),
-                e.getMaxBarrelSelection());
+                e.getMaxBarrelSelection(),
+                e.getScheduledStartAt(),
+                e.getRepeatInterval());
     }
 
     private GameRoomConfigJpa toJpa(GameRoomConfig config) {
@@ -51,6 +53,8 @@ public class GameRoomConfigRepositoryAdapter implements GameRoomConfigRepository
         e.setBoostCostAmount(config.getBoostCostAmount());
         e.setBoostEnabled(config.isBoostEnabled());
         e.setMaxBarrelSelection(config.getMaxBarrelSelection());
+        e.setScheduledStartAt(config.getScheduledStartAt());
+        e.setRepeatInterval(config.getRepeatInterval());
         return e;
     }
 }

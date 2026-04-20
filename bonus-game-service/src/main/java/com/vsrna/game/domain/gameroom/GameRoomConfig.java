@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -19,6 +20,8 @@ public class GameRoomConfig {
     private BigDecimal boostCostAmount;
     private boolean isBoostEnabled;
     private int maxBarrelSelection;
+    private Instant scheduledStartAt;
+    private RepeatInterval repeatInterval;
 
     public GameRoomConfig(UUID gameRoomId, int maxPlayers, BigDecimal entryFeeAmount,
                           BigDecimal winnerPayoutPercentage, BigDecimal boostCostAmount, boolean isBoostEnabled,
@@ -30,5 +33,13 @@ public class GameRoomConfig {
         this.boostCostAmount = boostCostAmount;
         this.isBoostEnabled = isBoostEnabled;
         this.maxBarrelSelection = maxBarrelSelection;
+    }
+
+    public GameRoomConfig(UUID gameRoomId, int maxPlayers, BigDecimal entryFeeAmount,
+                          BigDecimal winnerPayoutPercentage, BigDecimal boostCostAmount, boolean isBoostEnabled,
+                          int maxBarrelSelection, Instant scheduledStartAt, RepeatInterval repeatInterval) {
+        this(gameRoomId, maxPlayers, entryFeeAmount, winnerPayoutPercentage, boostCostAmount, isBoostEnabled, maxBarrelSelection);
+        this.scheduledStartAt = scheduledStartAt;
+        this.repeatInterval = repeatInterval;
     }
 }

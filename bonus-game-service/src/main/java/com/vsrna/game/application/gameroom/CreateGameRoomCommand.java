@@ -1,6 +1,9 @@
 package com.vsrna.game.application.gameroom;
 
+import com.vsrna.game.domain.gameroom.RepeatInterval;
+
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 public record CreateGameRoomCommand(
@@ -10,6 +13,8 @@ public record CreateGameRoomCommand(
         BigDecimal winnerPayoutPercentage,
         BigDecimal boostCostAmount,
         boolean isBoostEnabled,
-        int maxBarrelSelection
+        int maxBarrelSelection,
+        Instant scheduledStartAt,
+        RepeatInterval repeatInterval
 ) {
 }

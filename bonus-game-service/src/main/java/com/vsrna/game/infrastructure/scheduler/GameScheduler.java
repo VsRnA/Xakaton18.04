@@ -59,6 +59,12 @@ public class GameScheduler implements GameSchedulerPort {
         schedule(FinalizeRoundJob.class, "finalize-round-" + roomId + "-" + roundNumber, data, boostWindowSeconds);
     }
 
+    public void scheduleRoomOpen(UUID roomId, Instant startAt) {
+        JobDataMap data = new JobDataMap();
+        data.put("roomId", roomId.toString());
+        scheduleAt(OpenScheduledRoomJob.class, "open-room-" + roomId, data, startAt);
+    }
+
     public void cancel(UUID roomId, String phase) {
         JobKey key = JobKey.jobKey(phase + "-" + roomId);
         try {
@@ -73,6 +79,11 @@ public class GameScheduler implements GameSchedulerPort {
 
     private void schedule(Class<? extends Job> jobClass, String jobName,
                           JobDataMap data, int delaySeconds) {
+        scheduleAt(jobClass, jobName, data, Instant.now().plusSeconds(delaySeconds));
+    }
+
+    private void scheduleAt(Class<? extends Job> jobClass, String jobName,
+                             JobDataMap data, Instant startAt) {
         try {
             JobKey key = JobKey.jobKey(jobName);
             if (quartzScheduler.checkExists(key)) {
@@ -85,10 +96,10 @@ public class GameScheduler implements GameSchedulerPort {
                     .build();
             Trigger trigger = TriggerBuilder.newTrigger()
                     .forJob(job)
-                    .startAt(Date.from(Instant.now().plusSeconds(delaySeconds)))
+                    .startAt(Date.from(startAt))
                     .build();
             quartzScheduler.scheduleJob(job, trigger);
-            log.debug("Scheduled job {} in {}s", jobName, delaySeconds);
+            log.debug("Scheduled job {} at {}", jobName, startAt);
         } catch (SchedulerException e) {
             log.error("Failed to schedule job {}: {}", jobName, e.getMessage(), e);
         }

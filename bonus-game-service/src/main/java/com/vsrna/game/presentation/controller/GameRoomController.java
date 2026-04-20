@@ -34,12 +34,17 @@ public class GameRoomController {
 
     @Operation(summary = "Создать комнату (ADMIN)",
             description = """
-                    Создаёт комнату и возвращает её данные вместе с предупреждениями о конфигурации.
+                    Создаёт комнату. Перед вызовом используйте `POST /admin/evaluate` для предварительного расчёта
+                    призового фонда, дохода организатора и списка предупреждений.
+
+                    Если конфигурация содержит предупреждения уровня ERROR — необходимо передать `confirmWarnings: true`
+                    для подтверждения создания.
 
                     **WS-события после вызова:**
-                    | Топик | Событие |
-                    |-------|---------|
-                    | `/topic/rooms` | `ROOM_CREATED` |
+                    | Топик | Событие | Условие |
+                    |-------|---------|---------|
+                    | `/topic/rooms` | `ROOM_CREATED` | немедленный запуск |
+                    | `/topic/rooms` | `ROOM_SCHEDULED` | запуск по расписанию |
                     """)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -54,14 +59,26 @@ public class GameRoomController {
                 request.winnerPayoutPercentage(),
                 request.boostCostAmount(),
                 request.boostEnabled(),
-                request.maxBarrelSelection()
+                request.maxBarrelSelection(),
+                request.scheduledStartAt(),
+                request.repeatInterval()
         );
-        ConfigEvaluationResult evaluation = gameRoomService.evaluateConfig(command);
+
+        if (!request.confirmWarnings()) {
+            ConfigEvaluationResult evaluation = gameRoomService.evaluateConfig(command);
+            boolean hasErrors = evaluation.warnings().stream()
+                    .anyMatch(w -> "ERROR".equals(w.severity()));
+            if (hasErrors) {
+                List<GameRoomDto.ConfigWarningResponse> warnings = evaluation.warnings().stream()
+                        .map(w -> new GameRoomDto.ConfigWarningResponse(w.code(), w.severity(), w.message()))
+                        .toList();
+                throw ApiException.unprocessable("Конфигурация содержит ошибки. Установите confirmWarnings=true для принудительного создания.",
+                        java.util.Map.of("warnings", warnings));
+            }
+        }
+
         GameRoomDetails details = gameRoomService.createRoom(command);
-        List<GameRoomDto.ConfigWarningResponse> warnings = evaluation.warnings().stream()
-                .map(w -> new GameRoomDto.ConfigWarningResponse(w.code(), w.severity(), w.message()))
-                .toList();
-        return new GameRoomDto.CreateRoomResponse(toResponse(details), warnings);
+        return new GameRoomDto.CreateRoomResponse(toResponse(details));
     }
 
     @Operation(summary = "Список комнат с фильтрами",
@@ -103,7 +120,8 @@ public class GameRoomController {
         CreateGameRoomCommand command = new CreateGameRoomCommand(
                 null, request.maxPlayers(), request.entryFeeAmount(),
                 request.winnerPayoutPercentage(), request.boostCostAmount(),
-                request.boostEnabled(), request.maxBarrelSelection()
+                request.boostEnabled(), request.maxBarrelSelection(),
+                null, null
         );
         ConfigEvaluationResult result = gameRoomService.evaluateConfig(command);
         List<GameRoomDto.ConfigWarningResponse> warnings = result.warnings().stream()
@@ -208,7 +226,9 @@ public class GameRoomController {
                         details.config().getWinnerPayoutPercentage(),
                         details.config().getBoostCostAmount(),
                         details.config().isBoostEnabled(),
-                        details.config().getMaxBarrelSelection()
+                        details.config().getMaxBarrelSelection(),
+                        details.config().getScheduledStartAt(),
+                        details.config().getRepeatInterval()
                 ),
                 waitTimerExpiresAt != null ? waitTimerExpiresAt.toEpochMilli() : null
         );

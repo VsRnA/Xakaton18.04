@@ -1,11 +1,13 @@
 package com.vsrna.game.infrastructure.persistence.gameroom;
 
+import com.vsrna.game.domain.gameroom.RepeatInterval;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -36,4 +38,11 @@ public class GameRoomConfigJpa {
 
     @Column(name = "\"maxBarrelSelection\"", nullable = false)
     private int maxBarrelSelection;
+
+    @Column(name = "\"scheduledStartAt\"", nullable = true)
+    private Instant scheduledStartAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "\"repeatInterval\"", nullable = true, length = 20)
+    private RepeatInterval repeatInterval;
 }

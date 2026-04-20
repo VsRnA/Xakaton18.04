@@ -17,7 +17,8 @@ public class ApiException extends RuntimeException {
         ERR_CLIENT_FORBIDDEN,
         ERR_CLIENT_ENTITY_ALREADY_EXIST,
         ERR_CLIENT_ENTITY_NOT_FOUND,
-        ERR_CLIENT_INSUFFICIENT_BALANCE
+        ERR_CLIENT_INSUFFICIENT_BALANCE,
+        ERR_CLIENT_UNPROCESSABLE
     }
 
     private final String guid;
@@ -80,5 +81,10 @@ public class ApiException extends RuntimeException {
     public static ApiException insufficientBalance(String message, Map<String, Object> details) {
         return new ApiException(message, ErrorCode.ERR_CLIENT_INSUFFICIENT_BALANCE,
                 HttpStatus.PAYMENT_REQUIRED, details);
+    }
+
+    public static ApiException unprocessable(String message, Map<String, Object> details) {
+        return new ApiException(message, ErrorCode.ERR_CLIENT_UNPROCESSABLE,
+                HttpStatus.UNPROCESSABLE_ENTITY, details);
     }
 }

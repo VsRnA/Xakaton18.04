@@ -1,6 +1,7 @@
 package com.vsrna.game.domain.gameroom;
 
 public enum GameRoomStatus {
+    SCHEDULED,
     WAITING,
     ROUND_1,
     BOOST_DECISION_1,

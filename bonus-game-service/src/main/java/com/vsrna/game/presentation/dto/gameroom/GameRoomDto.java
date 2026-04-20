@@ -1,6 +1,7 @@
 package com.vsrna.game.presentation.dto.gameroom;
 
 import com.vsrna.game.domain.gameroom.GameRoomStatus;
+import com.vsrna.game.domain.gameroom.RepeatInterval;
 import com.vsrna.game.domain.participant.ParticipantStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
@@ -18,7 +19,13 @@ public class GameRoomDto {
             @NotNull @DecimalMin("1") @DecimalMax("100") BigDecimal winnerPayoutPercentage,
             @NotNull @DecimalMin("0") BigDecimal boostCostAmount,
             boolean boostEnabled,
-            @Min(1) @Max(10) int maxBarrelSelection
+            @Min(1) @Max(10) int maxBarrelSelection,
+            @Schema(description = "Время запуска комнаты (ISO-8601). Null — запуск немедленно", nullable = true)
+            Instant scheduledStartAt,
+            @Schema(description = "Период повторения: EVERY_30_MIN | EVERY_HOUR | EVERY_DAY | EVERY_WEEK | EVERY_MONTH. Null — без повторений", nullable = true)
+            RepeatInterval repeatInterval,
+            @Schema(description = "Подтвердить создание при наличии предупреждений. По умолчанию false", defaultValue = "false")
+            boolean confirmWarnings
     ) {}
 
     public record ConfigResponse(
@@ -27,7 +34,11 @@ public class GameRoomDto {
             BigDecimal winnerPayoutPercentage,
             BigDecimal boostCostAmount,
             boolean isBoostEnabled,
-            int maxBarrelSelection
+            int maxBarrelSelection,
+            @Schema(description = "Запланированное время запуска. Null если запуск немедленный", nullable = true)
+            Instant scheduledStartAt,
+            @Schema(description = "Период повторения. Null если без повторений", nullable = true)
+            RepeatInterval repeatInterval
     ) {}
 
     public record GameRoomResponse(
@@ -73,10 +84,7 @@ public class GameRoomDto {
             List<ConfigWarningResponse> warnings
     ) {}
 
-    public record CreateRoomResponse(
-            GameRoomResponse room,
-            List<ConfigWarningResponse> warnings
-    ) {}
+    public record CreateRoomResponse(GameRoomResponse room) {}
 
     // --- Следующая игра ---
 

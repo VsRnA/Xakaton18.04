@@ -46,7 +46,13 @@ public class GameRoomServiceImpl implements GameRoomService {
     @Override
     @Transactional
     public GameRoomDetails createRoom(CreateGameRoomCommand command) {
-        GameRoom createdRoom = gameRoomRepository.create(new GameRoom(command.createdByUserId(), BigDecimal.ZERO));
+        boolean isScheduled = command.scheduledStartAt() != null;
+
+        GameRoom roomTemplate = new GameRoom(command.createdByUserId(), BigDecimal.ZERO);
+        if (isScheduled) {
+            roomTemplate.setStatus(GameRoomStatus.SCHEDULED);
+        }
+        GameRoom createdRoom = gameRoomRepository.create(roomTemplate);
 
         GameRoomConfig config = new GameRoomConfig(
                 createdRoom.getId(),
@@ -55,7 +61,9 @@ public class GameRoomServiceImpl implements GameRoomService {
                 command.winnerPayoutPercentage(),
                 command.boostCostAmount(),
                 command.isBoostEnabled(),
-                command.maxBarrelSelection()
+                command.maxBarrelSelection(),
+                command.scheduledStartAt(),
+                command.repeatInterval()
         );
         gameRoomConfigRepository.create(config);
 
@@ -68,12 +76,62 @@ public class GameRoomServiceImpl implements GameRoomService {
                 .toList();
         barrelRepository.createAll(barrels);
 
-        notifierPort.publishRoomsUpdate(Map.of(
-                "type", "ROOM_CREATED",
-                "roomId", createdRoom.getId().toString()
-        ));
+        if (isScheduled) {
+            schedulerPort.scheduleRoomOpen(createdRoom.getId(), command.scheduledStartAt());
+            notifierPort.publishRoomsUpdate(Map.of(
+                    "type", "ROOM_SCHEDULED",
+                    "roomId", createdRoom.getId().toString()
+            ));
+        } else {
+            notifierPort.publishRoomsUpdate(Map.of(
+                    "type", "ROOM_CREATED",
+                    "roomId", createdRoom.getId().toString()
+            ));
+        }
 
         return new GameRoomDetails(createdRoom, config);
+    }
+
+    @Override
+    @Transactional
+    public void openScheduledRoom(UUID roomId) {
+        GameRoom room = gameRoomRepository.getForUpdate(GameRoomQuery.byId(roomId));
+        if (room.getStatus() != GameRoomStatus.SCHEDULED) {
+            log.warn("openScheduledRoom: room {} is not SCHEDULED ({}), skipping", roomId, room.getStatus());
+            return;
+        }
+        GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
+
+        gameRoomRepository.update(GameRoomQuery.byId(roomId),
+                new GameRoomPatch(GameRoomStatus.WAITING, null, null, null, null, null));
+
+        Instant waitTimerExpiresAt = schedulerPort.scheduleWaitTimerExpiry(roomId);
+        gameRoomRepository.update(GameRoomQuery.byId(roomId),
+                new GameRoomPatch(null, null, null, null, null, waitTimerExpiresAt));
+
+        notifierPort.publishRoomsUpdate(Map.of(
+                "type", "ROOM_CREATED",
+                "roomId", roomId.toString()
+        ));
+
+        log.info("openScheduledRoom: room {} is now WAITING", roomId);
+
+        if (config.getRepeatInterval() != null && config.getScheduledStartAt() != null) {
+            Instant nextStartAt = config.getRepeatInterval().next(config.getScheduledStartAt());
+            CreateGameRoomCommand nextCommand = new CreateGameRoomCommand(
+                    room.getCreatedByUserId(),
+                    config.getMaxPlayers(),
+                    config.getEntryFeeAmount(),
+                    config.getWinnerPayoutPercentage(),
+                    config.getBoostCostAmount(),
+                    config.isBoostEnabled(),
+                    config.getMaxBarrelSelection(),
+                    nextStartAt,
+                    config.getRepeatInterval()
+            );
+            GameRoomDetails nextRoom = createRoom(nextCommand);
+            log.info("openScheduledRoom: created next recurring room {} at {}", nextRoom.room().getId(), nextStartAt);
+        }
     }
 
     @Override
