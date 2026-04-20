@@ -1,0 +1,17 @@
+package com.vsrna.game.domain.participant;
+
+import java.math.BigDecimal;
+
+public record GameParticipantPatch(ParticipantStatus status, Boolean advancedToFinal, BigDecimal reservedPoints, String displayName) {
+    public static GameParticipantPatch status(ParticipantStatus status) {
+        return new GameParticipantPatch(status, null, null, null);
+    }
+
+    public static GameParticipantPatch advanceToFinal() {
+        return new GameParticipantPatch(ParticipantStatus.FINALIST, true, null, null);
+    }
+
+    public static GameParticipantPatch eliminate() {
+        return new GameParticipantPatch(ParticipantStatus.ELIMINATED, null, null, null);
+    }
+}
