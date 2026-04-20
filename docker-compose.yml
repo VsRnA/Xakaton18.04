@@ -61,8 +61,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - INTERNAL_SECRET=${INTERNAL_SECRET}
       - KAFKA_BOOTSTRAP=kafka:9092
-      - ADMIN_USER=${ADMIN_USER:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - ADMIN_USER=${ADMIN_USER}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     restart: unless-stopped
 
   bonus-game-service:

@@ -326,6 +326,22 @@ public class RoundServiceImpl implements RoundService {
                 .listByEntries(entryIds).stream()
                 .collect(Collectors.groupingBy(ParticipantBarrelSelection::getEntryId));
 
+        // Создаём записи для участников, не отправивших выборы (score = 0, rank последний).
+        // Без этого финалисты/игроки, пропустившие выбор, отсутствуют в результатах.
+        ParticipantStatus statusForRound = roundNumber == 1 ? ParticipantStatus.ACTIVE : ParticipantStatus.FINALIST;
+        List<GameParticipant> allParticipants = participantRepository.list(
+                GameParticipantQuery.byRoomAndStatus(roomId, statusForRound));
+        Set<UUID> submittedParticipantIds = entries.stream()
+                .map(ParticipantRoundEntry::getParticipantId)
+                .collect(Collectors.toSet());
+        for (GameParticipant p : allParticipants) {
+            if (!submittedParticipantIds.contains(p.getId())) {
+                ParticipantRoundEntry defaultEntry = new ParticipantRoundEntry(roundResult.getId(), p.getId());
+                defaultEntry.setSelectionTimestamp(Instant.now());
+                entries.add(entryRepository.create(defaultEntry));
+            }
+        }
+
         for (ParticipantRoundEntry entry : entries) {
             List<ParticipantBarrelSelection> sels = selectionsByEntry.getOrDefault(entry.getId(), List.of());
             BigDecimal score = BigDecimal.ZERO;

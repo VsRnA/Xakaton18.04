@@ -5,6 +5,7 @@ import com.vsrna.game.domain.outbox.OutboxEventRepository;
 import com.vsrna.game.domain.outbox.OutboxStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -24,7 +25,7 @@ public class OutboxEventRepositoryAdapter implements OutboxEventRepository {
 
     @Override
     public List<OutboxEvent> findPending(int limit) {
-        return jpa.findByStatus(OutboxStatus.PENDING, PageRequest.of(0, limit))
+        return jpa.findByStatus(OutboxStatus.PENDING, PageRequest.of(0, limit, Sort.by("createdAt").ascending()))
                 .stream().map(this::toDomain).toList();
     }
 
