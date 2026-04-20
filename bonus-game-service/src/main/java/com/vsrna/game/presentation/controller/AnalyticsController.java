@@ -85,7 +85,7 @@ public class AnalyticsController {
     private UUID requireAdminAuth(HttpServletRequest request) {
         UUID userId = requireAuth(request);
         Collection<String> roles = (Collection<String>) request.getAttribute(AuthTokenFilter.ROLES_ATTR);
-        if (roles == null || !roles.contains("ADMIN")) {
+        if (roles == null || !roles.contains("admin")) {
             throw ApiException.forbidden("access denied: admin role required");
         }
         return userId;
