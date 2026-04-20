@@ -68,4 +68,9 @@ public class RoundServiceImpl implements RoundService {
     public GameHistory getGameHistory(UUID roomId) {
         return roundResultService.getGameHistory(roomId);
     }
+
+    @Override
+    public GameHistoryDetails getGameHistoryDetails(UUID roomId) {
+        return roundResultService.getGameHistoryDetails(roomId);
+    }
 }

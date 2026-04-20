@@ -130,4 +130,13 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 0, 0.0, 0.0
         );
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GameHistory> listGames(Instant from, Instant to, int page, int size) {
+        List<GameHistory> all = gameHistoryRepository.listByPeriod(from, to);
+        int start = page * size;
+        if (start >= all.size()) return List.of();
+        return all.subList(start, Math.min(start + size, all.size()));
+    }
 }

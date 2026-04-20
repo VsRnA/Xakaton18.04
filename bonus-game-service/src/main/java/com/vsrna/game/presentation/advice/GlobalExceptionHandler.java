@@ -18,11 +18,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleApiException(ApiException ex) {
         log.error("ApiException guid:{} code:{} message:{}", ex.getGuid(), ex.getCode(), ex.getMessage());
 
-        Map<String, Object> body = Map.of(
-                "guid", ex.getGuid(),
-                "code", ex.getCode(),
-                "message", ex.getMessage()
-        );
+        java.util.LinkedHashMap<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("guid", ex.getGuid());
+        body.put("code", ex.getCode());
+        body.put("message", ex.getMessage());
+        if (ex.getDetails() != null && !ex.getDetails().isEmpty()) {
+            body.put("details", ex.getDetails());
+        }
         return ResponseEntity.status(ex.getStatus()).body(Map.of("error", body));
     }
 

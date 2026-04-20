@@ -18,4 +18,5 @@ public interface RoundService {
     void finalizeRound(UUID roomId, int roundNumber);
     RoundResultDetails getRoundResult(UUID roomId, int roundNumber);
     GameHistory getGameHistory(UUID roomId);
+    GameHistoryDetails getGameHistoryDetails(UUID roomId);
 }

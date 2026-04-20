@@ -1,5 +1,6 @@
 package com.vsrna.game.application.round;
 
+import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.gameroom.GameRoomConfigQuery;
 import com.vsrna.game.domain.gameroom.GameRoomConfigRepository;
@@ -21,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -34,12 +37,21 @@ public class BoostService {
     private final ParticipantRoundEntryRepository entryRepository;
     private final ParticipantBarrelSelectionRepository selectionRepository;
     private final BalanceCompensationHelper balanceCompensationHelper;
+    private final BalancePort balancePort;
 
     @Transactional
     public void purchaseBoost(UUID roomId, UUID userId, int roundNumber) {
         var config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
         if (!config.isBoostEnabled()) {
             throw ApiException.badRequest("Boost is not enabled in this room");
+        }
+
+        // Проверка баланса до транзакции
+        BigDecimal available = balancePort.getAvailableBalance(userId);
+        if (available.compareTo(config.getBoostCostAmount()) < 0) {
+            throw ApiException.insufficientBalance(
+                    "Недостаточно баллов для покупки буста. Требуется: " + config.getBoostCostAmount(),
+                    Map.of("required", config.getBoostCostAmount(), "available", available));
         }
 
         var room = gameRoomRepository.get(GameRoomQuery.byId(roomId));

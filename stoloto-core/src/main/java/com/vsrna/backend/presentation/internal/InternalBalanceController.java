@@ -64,6 +64,16 @@ public class InternalBalanceController {
         ));
     }
 
+    @GetMapping("/balance/{userId}")
+    public ResponseEntity<Map<String, Object>> getBalance(@PathVariable UUID userId) {
+        UserBalance balance = userBalanceService.getBalance(userId);
+        return ResponseEntity.ok(Map.of(
+                "userId", userId,
+                "available", balance.getAvailable(),
+                "reserved", balance.getReserved()
+        ));
+    }
+
     @GetMapping("/users/{userId}")
     public ResponseEntity<Map<String, Object>> getUser(@PathVariable UUID userId) {
         User user = userService.getUser(userId);

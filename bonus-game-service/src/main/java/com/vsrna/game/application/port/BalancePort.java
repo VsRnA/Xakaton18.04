@@ -8,4 +8,5 @@ public interface BalancePort {
     void release(UUID userId, BigDecimal amount, UUID roomId);
     void award(UUID userId, BigDecimal amount, UUID roomId);
     void deduct(UUID userId, BigDecimal amount, UUID roomId);
+    BigDecimal getAvailableBalance(UUID userId);
 }

@@ -1,0 +1,13 @@
+package com.vsrna.game.application.gameroom;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+public record ConfigEvaluationResult(
+        BigDecimal projectedPrizePool,
+        BigDecimal projectedSystemRevenue,
+        double systemRevenuePercent,
+        double playerExpectedValue,
+        String attractivenessScore,
+        List<ConfigWarning> warnings
+) {}

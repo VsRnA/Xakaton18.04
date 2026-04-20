@@ -55,4 +55,29 @@ public class RoundDto {
             java.time.Instant completedAt,
             String winCriteria
     ) {}
+
+    public record ParticipantHistoryEntry(
+            UUID participantId,
+            UUID userId,
+            boolean isBot,
+            String displayName,
+            boolean boostPurchased,
+            BigDecimal totalScore,
+            Integer rank,
+            boolean isWinner
+    ) {}
+
+    public record GameHistoryDetailResponse(
+            UUID gameRoomId,
+            UUID winnerUserId,
+            boolean winnerIsBot,
+            BigDecimal prizeAwarded,
+            BigDecimal systemRevenue,
+            java.time.Instant completedAt,
+            String winCriteria,
+            int realPlayersCount,
+            int botCount,
+            boolean winnerUsedBoost,
+            List<ParticipantHistoryEntry> participants
+    ) {}
 }

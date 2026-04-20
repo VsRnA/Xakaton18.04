@@ -56,6 +56,24 @@ public class CoreServiceClient implements BalancePort {
         log.debug("Deducted balance: userId={}, amount={}, roomId={}", userId, amount, roomId);
     }
 
+    @Override
+    public BigDecimal getAvailableBalance(UUID userId) {
+        try {
+            BalanceResponse response = restClient.get()
+                    .uri("/internal/balance/" + userId)
+                    .header("X-Internal-Secret", internalSecret)
+                    .retrieve()
+                    .body(BalanceResponse.class);
+            return response != null && response.available() != null ? response.available() : BigDecimal.ZERO;
+        } catch (RestClientResponseException e) {
+            log.error("Core service getBalance failed: userId={} status={}", userId, e.getStatusCode());
+            throw ApiException.badRequest("Balance check failed: " + e.getStatusCode());
+        } catch (Exception e) {
+            log.error("Core service unavailable: getBalance userId={}", userId, e);
+            throw ApiException.internal("Core service unavailable");
+        }
+    }
+
     private void call(String path, Object body) {
         try {
             restClient.post()
@@ -75,4 +93,6 @@ public class CoreServiceClient implements BalancePort {
     }
 
     public record BalanceRequest(UUID userId, BigDecimal amount, UUID roomId) {}
+
+    public record BalanceResponse(BigDecimal available, BigDecimal reserved) {}
 }

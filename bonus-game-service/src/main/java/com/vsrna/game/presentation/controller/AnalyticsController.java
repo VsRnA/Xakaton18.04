@@ -3,6 +3,7 @@ package com.vsrna.game.presentation.controller;
 import com.vsrna.game.application.analytics.AnalyticsService;
 import com.vsrna.game.application.analytics.GameAnalyticsSummary;
 import com.vsrna.game.domain.exception.ApiException;
+import com.vsrna.game.domain.history.GameHistory;
 import com.vsrna.game.presentation.dto.analytics.AnalyticsDto;
 import com.vsrna.game.presentation.filter.AuthTokenFilter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -47,6 +49,34 @@ public class AnalyticsController {
                 AnalyticsDto.AnalyticsSummaryResponse.from(summary),
                 analyticsService.getTimeSeries(effectiveFrom, effectiveTo)
         ));
+    }
+
+    @Operation(summary = "Журнал всех игр (ADMIN)",
+            description = "Постраничный список завершённых игр за период. По умолчанию: последние 30 дней.")
+    @GetMapping("/games")
+    public ResponseEntity<AnalyticsDto.AdminGamesResponse> listGames(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest httpRequest) {
+
+        requireAuth(httpRequest);
+
+        Instant effectiveTo = to != null ? to : Instant.now();
+        Instant effectiveFrom = from != null ? from : effectiveTo.minus(30, ChronoUnit.DAYS);
+
+        List<GameHistory> games = analyticsService.listGames(effectiveFrom, effectiveTo, page, size);
+        List<AnalyticsDto.AdminGameRecord> records = games.stream()
+                .map(g -> new AnalyticsDto.AdminGameRecord(
+                        g.getGameRoomId(), g.getCompletedAt(), g.getWinnerUserId(),
+                        g.isWinnerIsBot(), g.getPrizeAwarded(), g.getSystemRevenue(),
+                        g.getWinCriteria(), g.getRealPlayersCount(), g.getBotCount(),
+                        g.getBoostUsedCount(), g.isWinnerUsedBoost()))
+                .toList();
+        return ResponseEntity.ok(new AnalyticsDto.AdminGamesResponse(records, records.size()));
     }
 
     private UUID requireAuth(HttpServletRequest request) {

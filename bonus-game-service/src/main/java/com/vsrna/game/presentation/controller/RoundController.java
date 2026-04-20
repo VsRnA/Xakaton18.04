@@ -1,5 +1,6 @@
 package com.vsrna.game.presentation.controller;
 
+import com.vsrna.game.application.round.GameHistoryDetails;
 import com.vsrna.game.application.round.RoundResultDetails;
 import com.vsrna.game.application.round.RoundService;
 import com.vsrna.game.domain.exception.ApiException;
@@ -166,20 +167,24 @@ public class RoundController {
         }
     }
 
-    @Operation(summary = "История игры в комнате")
+    @Operation(summary = "История игры в комнате",
+            description = "Возвращает детальную историю: состав участников, бусты, скоры, ранги, победитель.")
     @GetMapping("/history")
-    public RoundDto.GameHistoryResponse getGameHistory(@PathVariable UUID roomId,
-                                                        HttpServletRequest httpRequest) {
+    public RoundDto.GameHistoryDetailResponse getGameHistory(@PathVariable UUID roomId,
+                                                              HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
-        GameHistory history = roundService.getGameHistory(roomId);
-        return new RoundDto.GameHistoryResponse(
-                history.getGameRoomId(),
-                history.getWinnerUserId(),
-                history.isWinnerIsBot(),
-                history.getPrizeAwarded(),
-                history.getSystemRevenue(),
-                history.getCompletedAt(),
-                history.getWinCriteria()
+        GameHistoryDetails details = roundService.getGameHistoryDetails(roomId);
+        GameHistory h = details.history();
+        List<RoundDto.ParticipantHistoryEntry> participants = details.participants().stream()
+                .map(p -> new RoundDto.ParticipantHistoryEntry(
+                        p.participantId(), p.userId(), p.isBot(), p.displayName(),
+                        p.boostPurchased(), p.totalScore(), p.rank(), p.isWinner()))
+                .toList();
+        return new RoundDto.GameHistoryDetailResponse(
+                h.getGameRoomId(), h.getWinnerUserId(), h.isWinnerIsBot(),
+                h.getPrizeAwarded(), h.getSystemRevenue(), h.getCompletedAt(),
+                h.getWinCriteria(), h.getRealPlayersCount(), h.getBotCount(),
+                h.isWinnerUsedBoost(), participants
         );
     }
 

@@ -70,4 +70,23 @@ public class AnalyticsDto {
             AnalyticsSummaryResponse summary,
             List<com.vsrna.game.application.analytics.TimeSeriesPoint> timeseries
     ) {}
+
+    public record AdminGameRecord(
+            java.util.UUID gameRoomId,
+            Instant completedAt,
+            java.util.UUID winnerUserId,
+            boolean winnerIsBot,
+            BigDecimal prizeAwarded,
+            BigDecimal systemRevenue,
+            String winCriteria,
+            int realPlayersCount,
+            int botCount,
+            int boostUsedCount,
+            boolean winnerUsedBoost
+    ) {}
+
+    public record AdminGamesResponse(
+            List<AdminGameRecord> games,
+            int totalCount
+    ) {}
 }

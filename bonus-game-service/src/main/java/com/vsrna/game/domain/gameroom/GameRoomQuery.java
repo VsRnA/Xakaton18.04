@@ -1,5 +1,6 @@
 package com.vsrna.game.domain.gameroom;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public record GameRoomQuery(
@@ -7,21 +8,31 @@ public record GameRoomQuery(
         GameRoomStatus status,
         UUID createdByUserId,
         int page,
-        int size
+        int size,
+        BigDecimal entryFeeMin,
+        BigDecimal entryFeeMax,
+        Integer maxPlayersFilter,
+        Boolean onlyWithSlots
 ) {
     public static GameRoomQuery byId(UUID id) {
-        return new GameRoomQuery(id, null, null, 0, 20);
+        return new GameRoomQuery(id, null, null, 0, 20, null, null, null, null);
     }
 
     public static GameRoomQuery byStatus(GameRoomStatus status) {
-        return new GameRoomQuery(null, status, null, 0, 20);
+        return new GameRoomQuery(null, status, null, 0, 20, null, null, null, null);
     }
 
     public static GameRoomQuery list(int page, int size) {
-        return new GameRoomQuery(null, null, null, page, size);
+        return new GameRoomQuery(null, null, null, page, size, null, null, null, null);
     }
 
     public static GameRoomQuery listByStatus(GameRoomStatus status, int page, int size) {
-        return new GameRoomQuery(null, status, null, page, size);
+        return new GameRoomQuery(null, status, null, page, size, null, null, null, null);
+    }
+
+    public static GameRoomQuery filtered(GameRoomStatus status, BigDecimal entryFeeMin,
+            BigDecimal entryFeeMax, Integer maxPlayersFilter, Boolean onlyWithSlots, int page, int size) {
+        return new GameRoomQuery(null, status, null, page, size,
+                entryFeeMin, entryFeeMax, maxPlayersFilter, onlyWithSlots);
     }
 }

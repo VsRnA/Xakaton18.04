@@ -64,4 +64,50 @@ public class RoundResultService {
     public GameHistory getGameHistory(UUID roomId) {
         return gameHistoryRepository.get(GameHistoryQuery.byRoom(roomId));
     }
+
+    @Transactional(readOnly = true)
+    public GameHistoryDetails getGameHistoryDetails(UUID roomId) {
+        GameHistory history = gameHistoryRepository.get(GameHistoryQuery.byRoom(roomId));
+        List<GameParticipant> participants = participantRepository.list(GameParticipantQuery.byRoom(roomId));
+
+        // Берём записи раунда 2 если есть, иначе раунда 1
+        List<ParticipantRoundEntry> entries = List.of();
+        var round2 = roundResultRepository.find(RoundResultQuery.byRoomAndRound(roomId, 2));
+        if (round2.isPresent()) {
+            entries = entryRepository.list(ParticipantRoundEntryQuery.byRoundResult(round2.get().getId()));
+        } else {
+            var round1 = roundResultRepository.find(RoundResultQuery.byRoomAndRound(roomId, 1));
+            if (round1.isPresent()) {
+                entries = entryRepository.list(ParticipantRoundEntryQuery.byRoundResult(round1.get().getId()));
+            }
+        }
+
+        Map<UUID, ParticipantRoundEntry> entryByParticipant = entries.stream()
+                .collect(Collectors.toMap(ParticipantRoundEntry::getParticipantId, e -> e));
+
+        UUID winnerParticipantId = history.getWinnerUserId() != null
+                ? participants.stream()
+                        .filter(p -> history.getWinnerUserId().equals(p.getUserId()))
+                        .map(GameParticipant::getId)
+                        .findFirst().orElse(null)
+                : null;
+
+        List<ParticipantHistoryEntry> historyEntries = participants.stream()
+                .map(p -> {
+                    ParticipantRoundEntry entry = entryByParticipant.get(p.getId());
+                    return new ParticipantHistoryEntry(
+                            p.getId(),
+                            p.getUserId(),
+                            p.isBot(),
+                            p.getDisplayName(),
+                            entry != null && entry.isBoostPurchased(),
+                            entry != null ? entry.getTotalScore() : null,
+                            entry != null ? entry.getRankInRound() : null,
+                            p.getId().equals(winnerParticipantId)
+                    );
+                })
+                .toList();
+
+        return new GameHistoryDetails(history, historyEntries);
+    }
 }

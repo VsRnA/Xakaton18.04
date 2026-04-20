@@ -3,6 +3,7 @@ package com.vsrna.game.domain.exception;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
@@ -14,18 +15,29 @@ public class ApiException extends RuntimeException {
         ERR_CLIENT_REQUEST_VALIDATION,
         ERR_CLIENT_AUTH,
         ERR_CLIENT_ENTITY_ALREADY_EXIST,
-        ERR_CLIENT_ENTITY_NOT_FOUND
+        ERR_CLIENT_ENTITY_NOT_FOUND,
+        ERR_CLIENT_INSUFFICIENT_BALANCE
     }
 
     private final String guid;
     private final ErrorCode code;
     private final HttpStatus status;
+    private final Map<String, Object> details;
 
     private ApiException(String message, ErrorCode code, HttpStatus status) {
         super(message);
         this.guid = UUID.randomUUID().toString();
         this.code = code;
         this.status = status;
+        this.details = null;
+    }
+
+    private ApiException(String message, ErrorCode code, HttpStatus status, Map<String, Object> details) {
+        super(message);
+        this.guid = UUID.randomUUID().toString();
+        this.code = code;
+        this.status = status;
+        this.details = details;
     }
 
     public static ApiException internal(String message) {
@@ -58,5 +70,10 @@ public class ApiException extends RuntimeException {
                 ErrorCode.ERR_CLIENT_ENTITY_NOT_FOUND,
                 HttpStatus.NOT_FOUND
         );
+    }
+
+    public static ApiException insufficientBalance(String message, Map<String, Object> details) {
+        return new ApiException(message, ErrorCode.ERR_CLIENT_INSUFFICIENT_BALANCE,
+                HttpStatus.PAYMENT_REQUIRED, details);
     }
 }
