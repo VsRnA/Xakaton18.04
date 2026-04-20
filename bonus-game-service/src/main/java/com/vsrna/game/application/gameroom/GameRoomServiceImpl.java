@@ -55,10 +55,10 @@ public class GameRoomServiceImpl implements GameRoomService {
         gameRoomConfigRepository.create(config);
 
         List<Barrel> barrels = new ArrayList<>();
-        for (int i = 1; i <= 10; i++) {
+        for (int i = 1; i <= 12; i++) {
             barrels.add(new Barrel(room.getId(), 1, String.format("R1B%02d", i), i));
         }
-        for (int i = 1; i <= 10; i++) {
+        for (int i = 1; i <= 12; i++) {
             barrels.add(new Barrel(room.getId(), 2, String.format("R2B%02d", i), i));
         }
         barrelRepository.createAll(barrels);

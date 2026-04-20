@@ -247,7 +247,7 @@ public class RoundServiceImpl implements RoundService {
         // Детерминированно восстанавливаем веса — результат тот же, что был бы при генерации.
         RoundResult roundResult = roundResultRepository.get(
                 RoundResultQuery.byRoomAndRound(roomId, roundNumber));
-        List<BigDecimal> weights = rngPort.reveal(roundResult.getRawSeed(), 10);
+        List<BigDecimal> weights = rngPort.reveal(roundResult.getRawSeed(), 12);
 
         List<Barrel> barrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
         for (int i = 0; i < barrels.size(); i++) {
@@ -342,6 +342,42 @@ public class RoundServiceImpl implements RoundService {
             }
         }
 
+        // Дисквалифицируем участников, не выбравших ни одной бочки.
+        // Score = 0 мог бы вывести их вперёд, когда все остальные в минусе.
+        List<GameParticipant> disqualifiedParticipants = new ArrayList<>();
+        List<String> disqualifiedIds = new ArrayList<>();
+        Iterator<ParticipantRoundEntry> entryIter = entries.iterator();
+        while (entryIter.hasNext()) {
+            ParticipantRoundEntry entry = entryIter.next();
+            if (selectionsByEntry.getOrDefault(entry.getId(), List.of()).isEmpty()) {
+                participantRepository.update(
+                        GameParticipantQuery.byId(entry.getParticipantId()),
+                        GameParticipantPatch.eliminate());
+                disqualifiedIds.add(entry.getParticipantId().toString());
+                GameParticipant p = participantRepository.get(
+                        GameParticipantQuery.byId(entry.getParticipantId()));
+                if (!p.isBot() && p.getUserId() != null) {
+                    disqualifiedParticipants.add(p);
+                }
+                entryIter.remove();
+            }
+        }
+        if (!disqualifiedParticipants.isEmpty()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    for (GameParticipant p : disqualifiedParticipants) {
+                        try {
+                            balancePort.release(p.getUserId(), p.getReservedPoints(), roomId);
+                        } catch (Exception e) {
+                            log.error("COMPENSATION NEEDED: failed to release balance for disqualified " +
+                                      "userId={}, roomId={}: {}", p.getUserId(), roomId, e.getMessage());
+                        }
+                    }
+                }
+            });
+        }
+
         for (ParticipantRoundEntry entry : entries) {
             List<ParticipantBarrelSelection> sels = selectionsByEntry.getOrDefault(entry.getId(), List.of());
             BigDecimal score = BigDecimal.ZERO;
@@ -384,12 +420,13 @@ public class RoundServiceImpl implements RoundService {
                 RoundResultQuery.byId(roundResult.getId()),
                 new RoundResultPatch(RoundResultStatus.COMPLETED, null, null, Instant.now()));
 
-        notifierPort.publishRoundEvent(roomId, Map.of(
-                "type", "ROUND_COMPLETED",
-                "roundNumber", roundNumber,
-                "winnerId", entries.isEmpty() ? "" : entries.get(0).getParticipantId().toString(),
-                "winCriteria", winCriteria
-        ));
+        Map<String, Object> roundCompletedPayload = new LinkedHashMap<>();
+        roundCompletedPayload.put("type", "ROUND_COMPLETED");
+        roundCompletedPayload.put("roundNumber", roundNumber);
+        roundCompletedPayload.put("winnerId", entries.isEmpty() ? "" : entries.get(0).getParticipantId().toString());
+        roundCompletedPayload.put("winCriteria", winCriteria);
+        roundCompletedPayload.put("disqualifiedIds", disqualifiedIds);
+        notifierPort.publishRoundEvent(roomId, roundCompletedPayload);
 
         if (roundNumber == 1) {
             advanceToFinal(roomId, entries, winCriteria);
