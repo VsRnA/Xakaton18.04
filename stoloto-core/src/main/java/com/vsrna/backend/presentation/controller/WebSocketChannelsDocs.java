@@ -99,10 +99,11 @@ public class WebSocketChannelsDocs {
                     **STOMP:** `client.subscribe('/topic/room/' + roomId + '/round', handler)`
 
                     Возможные события:
-                    - `ROUND_STARTED` — начало раунда, переданы ID бочек
+                    - `ROUND_STARTED` — начало раунда, переданы ровно 12 ID бочек
                     - `PLAYER_SELECTED` — прогресс выборов игроков
-                    - `WEIGHTS_REVEALED` — RNG раскрыл веса, старт буст-окна (5 сек)
-                    - `ROUND_COMPLETED` — раунд завершён, объявлен победитель раунда
+                    - `WEIGHTS_REVEALED` — RNG раскрыл веса, старт 5-секундного окна принятия решения о бусте
+                    - `BOOST_WINDOW_STARTED` — буст куплен, старт 5-секундного окна применения (`apply-boost`)
+                    - `ROUND_COMPLETED` — раунд завершён, объявлен победитель; содержит `disqualifiedIds`
                     """
     )
     @ApiResponse(
@@ -112,6 +113,7 @@ public class WebSocketChannelsDocs {
                     WsRoundEvent.RoundStarted.class,
                     WsRoundEvent.PlayerSelected.class,
                     WsRoundEvent.WeightsRevealed.class,
+                    WsRoundEvent.BoostWindowStarted.class,
                     WsRoundEvent.RoundCompleted.class
             }))
     )

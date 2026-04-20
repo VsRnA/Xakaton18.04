@@ -1,5 +1,6 @@
 package com.vsrna.backend.presentation.dto.ws;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
@@ -12,7 +13,12 @@ public sealed interface WsUserEvent permits
     record BarrelsDealt(
             @Schema(example = "BARRELS_DEALT") String type,
             @Schema(description = "ID комнаты") String roomId,
-            @Schema(description = "Бочки в персональном порядке показа") List<BarrelInfo> barrels
+            @ArraySchema(
+                    schema = @Schema(description = "Бочка в персональном порядке показа"),
+                    minItems = 12, maxItems = 12,
+                    arraySchema = @Schema(description = "Ровно 12 бочек — фиксированный набор раунда, перемешанный для данного игрока")
+            )
+            List<BarrelInfo> barrels
     ) implements WsUserEvent {
 
         @Schema(description = "Информация о бочке")

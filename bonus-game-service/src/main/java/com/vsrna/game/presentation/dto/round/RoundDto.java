@@ -11,7 +11,7 @@ import java.util.UUID;
 public class RoundDto {
 
     public record SubmitSelectionRequest(
-            @NotEmpty @Size(min = 1, max = 5) List<UUID> barrelIds
+            @NotEmpty @Size(min = 1, max = 10) List<UUID> barrelIds
     ) {}
 
     public record BoostBarrelRequest(

@@ -27,7 +27,10 @@ public class RoundController {
 
     private final RoundService roundService;
 
-    @Operation(summary = "Получить перемешанные бочки раунда")
+    @Operation(
+            summary = "Получить перемешанные бочки раунда",
+            description = "Возвращает ровно 12 бочек в порядке, перемешанном по userId + номеру раунда (Provably Fair shuffle). Веса равны null до завершения раунда."
+    )
     @GetMapping("/rounds/{n}/barrels")
     public List<RoundDto.BarrelResponse> getBarrels(@PathVariable UUID roomId,
                                                      @PathVariable int n,
@@ -45,7 +48,10 @@ public class RoundController {
                     Позволяет применить усиление к одной бочке в фазе `BOOST_WINDOW`.
                     Списание баланса происходит после коммита транзакции.
 
-                    **WS-события:** нет прямых. После покупки ждите `BOOST_WINDOW_STARTED`.
+                    **WS-события после покупки (публикуются на `/topic/room/{roomId}/round`):**
+                    | Топик | Событие |
+                    |-------|---------|
+                    | `/topic/room/{roomId}/round` | `BOOST_WINDOW_STARTED` — открылось 5-секундное окно для `apply-boost` |
                     """
     )
     @PostMapping("/rounds/{n}/boost")
@@ -60,7 +66,7 @@ public class RoundController {
     @Operation(
             summary = "Выбрать бочки",
             description = """
-                    Сохраняет выбор 1–5 бочек для текущего раунда. Можно вызывать повторно — выбор перезаписывается.
+                    Сохраняет выбор 1–N бочек для текущего раунда (N = `maxBarrelSelection` конфига комнаты, максимум 10). Можно вызывать повторно — выбор перезаписывается.
 
                     **WS-события после вызова:**
                     | Топик | Событие | Условие |
