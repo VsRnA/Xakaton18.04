@@ -15,4 +15,5 @@ public interface GameEventPort {
     void publishBalanceRelease(UUID userId, BigDecimal amount, UUID roomId);
     void publishBalanceAward(UUID userId, BigDecimal amount, UUID roomId);
     void publishBalanceDeduct(UUID userId, BigDecimal amount, UUID roomId);
+    void publishBalanceDeductReserved(UUID userId, BigDecimal amount, UUID roomId);
 }

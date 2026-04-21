@@ -16,7 +16,8 @@ public final class AuthDto {
 
     public record RegisterRequest(
             @NotBlank @Pattern(regexp = "^\\+?[0-9]{7,15}$") String phone,
-            @NotBlank @Size(min = 8, max = 72) String password
+            @NotBlank @Size(min = 8, max = 72) String password,
+            @NotBlank @Size(min = 3, max = 100) String username
     ) {}
 
     public record LoginResponse(

@@ -37,10 +37,11 @@ public class GameEventConsumer {
                 event.commandType(), event.userId(), event.amount(), event.roomId());
         try {
             switch (event.commandType()) {
-                case "RESERVE" -> userBalanceService.reservePoints(event.userId(), event.amount(), event.roomId());
-                case "RELEASE" -> userBalanceService.returnReservedPoints(event.userId(), event.amount(), event.roomId());
-                case "AWARD"   -> userBalanceService.creditPoints(event.userId(), event.amount(), event.roomId());
-                case "DEDUCT"  -> userBalanceService.deductPoints(event.userId(), event.amount(), event.roomId());
+                case "RESERVE"          -> userBalanceService.reservePoints(event.userId(), event.amount(), event.roomId());
+                case "RELEASE"          -> userBalanceService.returnReservedPoints(event.userId(), event.amount(), event.roomId());
+                case "AWARD"            -> userBalanceService.creditPoints(event.userId(), event.amount(), event.roomId());
+                case "DEDUCT"           -> userBalanceService.deductPoints(event.userId(), event.amount(), event.roomId());
+                case "DEDUCT_RESERVED"  -> userBalanceService.deductReserved(event.userId(), event.amount(), event.roomId());
                 default -> log.warn("Unknown balance command type: {}", event.commandType());
             }
         } catch (Exception e) {

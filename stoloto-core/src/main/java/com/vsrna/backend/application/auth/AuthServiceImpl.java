@@ -30,7 +30,8 @@ public class AuthServiceImpl implements AuthService {
         User user = userService.createUser(new UserDto.CreateUserRequest(
                 request.phone(),
                 request.password(),
-                (String) null
+                null,
+                request.username()
         ));
         String token = jwtUtils.generateToken(user.getGuid(), user.getRoleKeywords(), user.getUsername());
         return new AuthDto.LoginResponse(token, UserDto.UserResponse.from(user));

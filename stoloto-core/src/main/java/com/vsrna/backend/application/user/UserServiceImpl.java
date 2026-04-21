@@ -36,7 +36,15 @@ public class UserServiceImpl implements UserService {
             throw ApiException.alreadyExists("User", "phone already taken");
         }
 
+        if (request.username() != null && !request.username().isBlank()
+                && userRepository.find(UserQuery.byUsername(request.username())).isPresent()) {
+            throw ApiException.alreadyExists("User", "username already taken");
+        }
+
         User user = new User(request.phone(), passwordEncoder.encode(request.password()));
+        if (request.username() != null && !request.username().isBlank()) {
+            user.setUsername(request.username());
+        }
 
         String roleKeyword = (request.role() != null && !request.role().isBlank())
                 ? UserRole.fromString(request.role()).getKeyword()

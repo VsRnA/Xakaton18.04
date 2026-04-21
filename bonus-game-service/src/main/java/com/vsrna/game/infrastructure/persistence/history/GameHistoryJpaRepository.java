@@ -11,15 +11,15 @@ import java.util.UUID;
 
 public interface GameHistoryJpaRepository extends JpaRepository<GameHistoryJpa, UUID> {
 
-    @Query("""
-            SELECT history FROM GameHistoryJpa history
-            WHERE (:id IS NULL OR history.id = :id)
-            AND (:gameRoomId IS NULL OR history.gameRoomId = :gameRoomId)
-            AND (:winnerUserId IS NULL OR history.winnerUserId = :winnerUserId)
-            AND (:from IS NULL OR history.completedAt >= :from)
-            AND (:to IS NULL OR history.completedAt <= :to)
-            ORDER BY history.completedAt DESC
-            """)
+    @Query(value = """
+            SELECT * FROM "gameHistory"
+            WHERE (CAST(:id AS uuid) IS NULL OR id = CAST(:id AS uuid))
+            AND (CAST(:gameRoomId AS uuid) IS NULL OR "gameRoomId" = CAST(:gameRoomId AS uuid))
+            AND (CAST(:winnerUserId AS uuid) IS NULL OR "winnerUserId" = CAST(:winnerUserId AS uuid))
+            AND (CAST(:from AS timestamptz) IS NULL OR "completedAt" >= CAST(:from AS timestamptz))
+            AND (CAST(:to AS timestamptz) IS NULL OR "completedAt" <= CAST(:to AS timestamptz))
+            ORDER BY "completedAt" DESC
+            """, nativeQuery = true)
     List<GameHistoryJpa> findByQuery(
             @Param("id") UUID id,
             @Param("gameRoomId") UUID gameRoomId,

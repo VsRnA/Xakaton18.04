@@ -28,6 +28,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatus()).body(Map.of("error", body));
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleUnexpected(Exception ex) {
+        log.error("Unexpected error", ex);
+        java.util.LinkedHashMap<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("code", "INTERNAL_ERROR");
+        body.put("message", "Внутренняя ошибка сервера");
+        return ResponseEntity.status(500).body(Map.of("error", body));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()

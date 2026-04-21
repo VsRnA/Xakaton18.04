@@ -64,6 +64,12 @@ public class GameEventPublisher implements GameEventPort {
                 new BalanceCommandEvent("DEDUCT", userId, amount, roomId));
     }
 
+    @Override
+    public void publishBalanceDeductReserved(UUID userId, BigDecimal amount, UUID roomId) {
+        enqueue("BALANCE", userId.toString(), "BALANCE_DEDUCT_RESERVED", TOPIC_BALANCE_COMMAND,
+                new BalanceCommandEvent("DEDUCT_RESERVED", userId, amount, roomId));
+    }
+
     private void enqueue(String aggregateType, String aggregateId, String eventType,
                          String topic, Object payload) {
         try {

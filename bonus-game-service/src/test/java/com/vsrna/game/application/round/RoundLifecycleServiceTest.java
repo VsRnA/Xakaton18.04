@@ -9,13 +9,11 @@ import com.vsrna.game.domain.barrel.BarrelRepository;
 import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.gameroom.GameRoom;
 import com.vsrna.game.domain.gameroom.GameRoomPatch;
-import com.vsrna.game.domain.gameroom.GameRoomQuery;
 import com.vsrna.game.domain.gameroom.GameRoomRepository;
 import com.vsrna.game.domain.gameroom.GameRoomStatus;
 import com.vsrna.game.domain.history.GameHistoryRepository;
 import com.vsrna.game.domain.participant.GameParticipant;
 import com.vsrna.game.domain.participant.GameParticipantPatch;
-import com.vsrna.game.domain.participant.GameParticipantQuery;
 import com.vsrna.game.domain.participant.GameParticipantRepository;
 import com.vsrna.game.domain.participant.ParticipantStatus;
 import com.vsrna.game.domain.rng.RngPort;
@@ -26,7 +24,6 @@ import com.vsrna.game.fixtures.GameParticipantFixtures;
 import com.vsrna.game.fixtures.GameRoomFixtures;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,7 +32,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -165,7 +161,6 @@ class RoundLifecycleServiceTest {
 
         verify(schedulerPort).cancel(roomId, "start-round2");
         verify(schedulerPort).scheduleRoundEnd(roomId, 2);
-        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
         verify(notifierPort).publishRoundEvent(eq(roomId), any());
     }
 

@@ -86,6 +86,7 @@ public class GameHistoryRepositoryAdapter implements GameHistoryRepository {
         jpaEntity.setWinnerIsBot(history.isWinnerIsBot());
         jpaEntity.setPrizeAwarded(history.getPrizeAwarded());
         jpaEntity.setSystemRevenue(history.getSystemRevenue());
+        jpaEntity.setCompletedAt(history.getCompletedAt());
         jpaEntity.setWinCriteria(history.getWinCriteria());
         jpaEntity.setSummaryJson(history.getSummaryJson());
         jpaEntity.setRealPlayersCount(history.getRealPlayersCount());

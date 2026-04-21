@@ -131,6 +131,7 @@ public class PrizeServiceImpl implements PrizeService {
         }
 
         if (winner.isRealPlayer()) {
+            gameEventPort.publishBalanceDeductReserved(winner.getUserId(), winner.getReservedPoints(), roomId);
             gameEventPort.publishBalanceAward(winner.getUserId(), prizeAwarded, roomId);
         }
     }
