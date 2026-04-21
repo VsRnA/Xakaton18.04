@@ -52,10 +52,10 @@ public class BoostService {
         }
 
         var room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
-        GameRoomStatus expectedDecisionStatus = roundNumber == RoundConstants.ROUND_1
-                ? GameRoomStatus.BOOST_DECISION_1 : GameRoomStatus.BOOST_DECISION_2;
-        if (room.getStatus() != expectedDecisionStatus) {
-            throw ApiException.badRequest("Boost can only be purchased during the boost decision window");
+        GameRoomStatus expectedRoundStatus = roundNumber == RoundConstants.ROUND_1
+                ? GameRoomStatus.ROUND_1 : GameRoomStatus.ROUND_2;
+        if (room.getStatus() != expectedRoundStatus) {
+            throw ApiException.badRequest("Boost can only be purchased during the active round");
         }
 
         var participant = participantRepository.get(GameParticipantQuery.byRoomAndUser(roomId, userId));

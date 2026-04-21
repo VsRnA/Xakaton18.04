@@ -45,11 +45,13 @@ public class RoundController {
     @Operation(
             summary = "Купить буст",
             description = """
-                    Покупает буст во время фазы принятия решения (`BOOST_DECISION`), до раскрытия весов.
-                    После окончания фазы буст применяется автоматически: меняет знак наибольшей отрицательной бочки,
+                    Покупает буст в течение 30-секундного раунда (`ROUND_1` / `ROUND_2`), пока веса бочек ещё не раскрыты.
+                    После окончания раунда наступает фаза `BOOST_DECISION` (5 сек ожидания без покупки),
+                    затем `BOOST_WINDOW` — раскрытие весов и применение эффекта буста.
+                    Буст применяется автоматически: меняет знак наибольшей отрицательной бочки среди выбранных,
                     либо удваивает минимальную положительную, если отрицательных нет.
-                    Эффект буста отображается в событии `BOOST_WINDOW_STARTED`.
-                    Списание баланса происходит после коммита транзакции.
+                    Эффект буста отображается в WS-событии `BOOST_WINDOW_STARTED` в поле `boostEffects`.
+                    Можно купить только один раз за игру. Списание баланса происходит после коммита транзакции.
                     """
     )
     @PostMapping("/rounds/{n}/boost")
@@ -72,11 +74,12 @@ public class RoundController {
                     | `/topic/room/{roomId}/round` | `PLAYER_SELECTED` | всегда |
 
                     **Асинхронные события по таймеру раунда (30 сек от старта):**
-                    | Топик | Событие |
-                    |-------|---------|
-                    | `/topic/room/{roomId}/round` | `WEIGHTS_REVEALED` → буст-окно 5 сек |
-                    | `/topic/room/{roomId}/round` | `ROUND_COMPLETED` |
-                    | `/topic/room/{roomId}/game` | `FINALISTS_ANNOUNCED` (конец раунда 1) или `GAME_FINISHED` (конец раунда 2) |
+                    | Топик | Событие | Описание |
+                    |-------|---------|----------|
+                    | `/topic/room/{roomId}/round` | `BOOST_DECISION_STARTED` | Ожидание 5 сек, веса не раскрыты, покупка буста недоступна |
+                    | `/topic/room/{roomId}/round` | `BOOST_WINDOW_STARTED` | Раскрытие весов (`barrelWeights`) и эффект буста (`boostEffects`), 5 сек |
+                    | `/topic/room/{roomId}/round` | `ROUND_COMPLETED` | Итоги раунда |
+                    | `/topic/room/{roomId}/game` | `FINALISTS_ANNOUNCED` (конец раунда 1) или `GAME_FINISHED` (конец раунда 2) | |
                     """
     )
     @PostMapping("/rounds/{n}/selection")
