@@ -20,8 +20,8 @@ public class GameRoomDto {
             @NotNull @DecimalMin("0") BigDecimal boostCostAmount,
             boolean boostEnabled,
             @Min(1) @Max(10) int maxBarrelSelection,
-            @Schema(description = "Время запуска комнаты (ISO-8601). Null — запуск немедленно", nullable = true)
-            Instant scheduledStartAt,
+            @Schema(description = "Время запуска комнаты (ISO-8601, UTC). Null — запуск немедленно. Должно быть в будущем.", nullable = true)
+            @Future Instant scheduledStartAt,
             @Schema(description = "Период повторения: EVERY_30_MIN | EVERY_HOUR | EVERY_DAY | EVERY_WEEK | EVERY_MONTH. Null — без повторений", nullable = true)
             RepeatInterval repeatInterval,
             @Schema(description = "Подтвердить создание при наличии предупреждений. По умолчанию false", defaultValue = "false")

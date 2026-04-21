@@ -117,7 +117,11 @@ public class GameRoomServiceImpl implements GameRoomService {
         log.info("openScheduledRoom: room {} is now WAITING", roomId);
 
         if (config.getRepeatInterval() != null && config.getScheduledStartAt() != null) {
-            Instant nextStartAt = config.getRepeatInterval().next(config.getScheduledStartAt());
+            Instant nextStartAt = config.getScheduledStartAt();
+            Instant now = Instant.now();
+            do {
+                nextStartAt = config.getRepeatInterval().next(nextStartAt);
+            } while (!nextStartAt.isAfter(now));
             CreateGameRoomCommand nextCommand = new CreateGameRoomCommand(
                     room.getCreatedByUserId(),
                     config.getMaxPlayers(),
