@@ -2,7 +2,6 @@ package com.vsrna.game.application.prize;
 
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
-import com.vsrna.game.application.round.BalanceCompensationHelper;
 import com.vsrna.game.application.round.RoundScoringUtils;
 import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.exception.GameErrorMessages;
@@ -37,7 +36,6 @@ public class PrizeServiceImpl implements PrizeService {
     private final GameHistoryRepository gameHistoryRepository;
     private final GameEventPort gameEventPort;
     private final GameNotifierPort notifierPort;
-    private final BalanceCompensationHelper balanceCompensationHelper;
 
     @Override
     @Transactional
@@ -124,13 +122,16 @@ public class PrizeServiceImpl implements PrizeService {
 
         log.info("Room {} finished. Winner: {}, prize: {}", roomId, winner.getId(), prizeAwarded);
 
-        List<GameParticipant> realFinalists = finalists.stream()
-                .filter(GameParticipant::isRealPlayer)
-                .toList();
-        balanceCompensationHelper.scheduleRelease(realFinalists, roomId);
+        // Release reserved entry fee for non-winner finalists, award prize to winner —
+        // written to outbox atomically with room state update, delivered via Kafka
+        for (GameParticipant finalist : finalists) {
+            if (finalist.isRealPlayer() && !finalist.getId().equals(winner.getId())) {
+                gameEventPort.publishBalanceRelease(finalist.getUserId(), finalist.getReservedPoints(), roomId);
+            }
+        }
 
         if (winner.isRealPlayer()) {
-            balanceCompensationHelper.scheduleAward(winner.getUserId(), prizeAwarded, roomId);
+            gameEventPort.publishBalanceAward(winner.getUserId(), prizeAwarded, roomId);
         }
     }
 }

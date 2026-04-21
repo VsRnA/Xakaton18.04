@@ -9,7 +9,7 @@ import java.util.Map;
 public sealed interface WsRoundEvent permits
         WsRoundEvent.RoundStarted,
         WsRoundEvent.PlayerSelected,
-        WsRoundEvent.WeightsRevealed,
+        WsRoundEvent.BoostDecisionStarted,
         WsRoundEvent.BoostWindowStarted,
         WsRoundEvent.RoundCompleted {
 
@@ -23,6 +23,7 @@ public sealed interface WsRoundEvent permits
                     arraySchema = @Schema(description = "Ровно 12 бочек раунда — фиксированный набор")
             )
             List<String> barrelIds,
+            @Schema(description = "SHA-256 хэш сида — публикуется до раскрытия весов для верификации честности", example = "a3f2...") String seedHash,
             @Schema(description = "Unix-миллисекунды окончания раунда", example = "1713520800000") long expiresAt
     ) implements WsRoundEvent {}
 
@@ -34,21 +35,22 @@ public sealed interface WsRoundEvent permits
             @Schema(description = "Всего игроков в комнате", example = "4") int totalPlayers
     ) implements WsRoundEvent {}
 
-    @Schema(description = "RNG раскрыл веса бочек — открывается окно принятия решения о бусте (5 сек)")
-    record WeightsRevealed(
-            @Schema(example = "WEIGHTS_REVEALED") String type,
+    @Schema(description = "Раунд завершён, веса ещё не раскрыты — окно принятия решения о бусте (5 сек). Покупка буста в этой фазе недоступна.")
+    record BoostDecisionStarted(
+            @Schema(example = "BOOST_DECISION_STARTED") String type,
             @Schema(example = "1") int roundNumber,
-            @Schema(description = "Карта barrelId → вес (целое число)", example = "{\"uuid1\": 7, \"uuid2\": 3}") Map<String, Object> barrelWeights,
-            @Schema(description = "SHA-256 хэш сида для верификации честности", example = "a3f2...") String seedHash,
-            @Schema(description = "Raw hex сида (раскрывается для проверки)", example = "deadbeef...") String rawSeed,
-            @Schema(description = "Unix-миллисекунды окончания окна принятия решения о бусте", example = "1713520805000") long expiresAt
+            @Schema(description = "Unix-миллисекунды окончания фазы принятия решения", example = "1713520805000") long expiresAt
     ) implements WsRoundEvent {}
 
-    @Schema(description = "Буст куплен — открылось окно применения буста к бочке (5 сек)")
+    @Schema(description = "Веса бочек раскрыты — отображаются эффекты буста (если куплен). Длится 5 сек, после чего начисляется финальный скор.")
     record BoostWindowStarted(
             @Schema(example = "BOOST_WINDOW_STARTED") String type,
             @Schema(description = "Номер раунда (1 или 2)", example = "1") int roundNumber,
-            @Schema(description = "Unix-миллисекунды окончания буст-окна — клиент должен отправить apply-boost до этого момента", example = "1713520810000") long expiresAt
+            @Schema(description = "Карта barrelId → вес (число от -10 до +10)", example = "{\"uuid1\": 7, \"uuid2\": -3}") Map<String, Object> barrelWeights,
+            @Schema(description = "SHA-256 хэш сида — совпадает с seedHash из ROUND_STARTED", example = "a3f2...") String seedHash,
+            @Schema(description = "Raw hex сида — клиент может проверить SHA-256(rawSeed) == seedHash", example = "deadbeef...") String rawSeed,
+            @Schema(description = "Карта participantId → эффект буста. Пустая если никто не купил буст.", example = "{\"uuid\": {\"barrelId\": \"...\", \"originalWeight\": -3, \"boostedWeight\": 3}}") Map<String, Object> boostEffects,
+            @Schema(description = "Unix-миллисекунды окончания буст-окна", example = "1713520810000") long expiresAt
     ) implements WsRoundEvent {}
 
     @Schema(description = "Раунд завершён — объявлен победитель раунда")

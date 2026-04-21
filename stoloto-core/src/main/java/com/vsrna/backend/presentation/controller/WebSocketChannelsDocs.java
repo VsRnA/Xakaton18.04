@@ -38,7 +38,7 @@ public class WebSocketChannelsDocs {
 
                     **STOMP:** `client.subscribe('/topic/rooms', handler)`
 
-                    Возможные события: `ROOM_CREATED`, `ROOM_FULL`, `ROOM_STARTED`, `ROOM_FINISHED`
+                    Возможные события: `ROOM_CREATED`, `ROOM_SCHEDULED`, `ROOM_FULL`, `ROOM_STARTED`, `ROOM_FINISHED`, `ROOM_CANCELLED`
                     """
     )
     @ApiResponse(
@@ -46,9 +46,11 @@ public class WebSocketChannelsDocs {
             description = "Схема сообщения топика",
             content = @Content(schema = @Schema(oneOf = {
                     WsRoomsEvent.RoomCreated.class,
+                    WsRoomsEvent.RoomScheduled.class,
                     WsRoomsEvent.RoomFull.class,
                     WsRoomsEvent.RoomStarted.class,
-                    WsRoomsEvent.RoomFinished.class
+                    WsRoomsEvent.RoomFinished.class,
+                    WsRoomsEvent.RoomCancelled.class
             }))
     )
     public ResponseEntity<Void> subscribeRooms() {
@@ -86,10 +88,10 @@ public class WebSocketChannelsDocs {
                     **STOMP:** `client.subscribe('/topic/room/' + roomId + '/round', handler)`
 
                     Возможные события:
-                    - `ROUND_STARTED` — начало раунда, переданы ровно 12 ID бочек
+                    - `ROUND_STARTED` — начало раунда, переданы ровно 12 ID бочек + `seedHash` для верификации
                     - `PLAYER_SELECTED` — прогресс выборов игроков
-                    - `WEIGHTS_REVEALED` — RNG раскрыл веса, старт 5-секундного окна принятия решения о бусте
-                    - `BOOST_WINDOW_STARTED` — буст куплен, старт 5-секундного окна применения (`apply-boost`)
+                    - `BOOST_DECISION_STARTED` — раунд завершён, веса ещё не раскрыты, 5 сек до раскрытия
+                    - `BOOST_WINDOW_STARTED` — веса раскрыты (`barrelWeights`, `rawSeed`), показан эффект буста (`boostEffects`), 5 сек
                     - `ROUND_COMPLETED` — раунд завершён, объявлен победитель; содержит `disqualifiedIds`
                     """
     )
@@ -99,7 +101,7 @@ public class WebSocketChannelsDocs {
             content = @Content(schema = @Schema(oneOf = {
                     WsRoundEvent.RoundStarted.class,
                     WsRoundEvent.PlayerSelected.class,
-                    WsRoundEvent.WeightsRevealed.class,
+                    WsRoundEvent.BoostDecisionStarted.class,
                     WsRoundEvent.BoostWindowStarted.class,
                     WsRoundEvent.RoundCompleted.class
             }))

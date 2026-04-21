@@ -2,6 +2,7 @@ package com.vsrna.game.application.gameroom;
 
 import com.vsrna.game.application.bot.BotService;
 import com.vsrna.game.application.port.BalancePort;
+import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.port.GameSchedulerPort;
 import com.vsrna.game.application.round.RoundConstants;
@@ -38,6 +39,7 @@ public class GameRoomServiceImpl implements GameRoomService {
     private final GameParticipantRepository participantRepository;
     private final BarrelRepository barrelRepository;
     private final BalancePort balancePort;
+    private final GameEventPort gameEventPort;
     private final BotService botService;
     private final GameSchedulerPort schedulerPort;
     private final GameNotifierPort notifierPort;
@@ -138,6 +140,9 @@ public class GameRoomServiceImpl implements GameRoomService {
     @Override
     @Transactional
     public GameRoomDetails joinRoom(UUID roomId, UUID userId, String displayName) {
+        // Check balance BEFORE acquiring the DB lock — keeps lock window short (no HTTP inside transaction)
+        BigDecimal available = balancePort.getAvailableBalance(userId);
+
         GameRoom room = gameRoomRepository.getForUpdate(GameRoomQuery.byId(roomId));
         GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
 
@@ -147,23 +152,31 @@ public class GameRoomServiceImpl implements GameRoomService {
         if (room.getCurrentPlayerCount() >= config.getMaxPlayers()) {
             throw ApiException.badRequest(GameErrorMessages.ROOM_FULL);
         }
-
-        // Reserve balance BEFORE any DB writes — fail fast if insufficient funds
-        reserveBalanceOrThrow(userId, config, roomId);
+        if (available.compareTo(config.getEntryFeeAmount()) < 0) {
+            List<GameRoomDetails> alternatives = listRooms(
+                    GameRoomQuery.filtered(GameRoomStatus.WAITING, BigDecimal.ZERO,
+                            config.getEntryFeeAmount().subtract(BigDecimal.ONE),
+                            null, true, 0, 3));
+            List<Map<String, Object>> altList = alternatives.stream()
+                    .map(d -> Map.<String, Object>of(
+                            "roomId", d.room().getId().toString(),
+                            "entryFee", d.config().getEntryFeeAmount()))
+                    .toList();
+            throw ApiException.insufficientBalance(
+                    GameErrorMessages.insufficientBalanceForEntry(config.getEntryFeeAmount()),
+                    Map.of("required", config.getEntryFeeAmount(), "suggestedRooms", altList));
+        }
 
         GameParticipant participant = new GameParticipant(roomId, userId, false, displayName, config.getEntryFeeAmount());
         try {
             participantRepository.create(participant);
         } catch (DataIntegrityViolationException e) {
-            // Participant already exists — release the balance we just reserved
-            try {
-                balancePort.release(userId, config.getEntryFeeAmount(), roomId);
-            } catch (Exception re) {
-                log.error("COMPENSATION NEEDED: failed to release balance after duplicate join " +
-                          "userId={}, roomId={}: {}", userId, roomId, re.getMessage());
-            }
             throw ApiException.alreadyExists("GameParticipant", GameErrorMessages.ROOM_PARTICIPANT_ALREADY_JOINED);
         }
+
+        // Write balance reserve command and notification atomically with participant creation
+        gameEventPort.publishBalanceReserve(userId, config.getEntryFeeAmount(), roomId);
+        gameEventPort.publishEntryReserved(userId, roomId, config.getEntryFeeAmount());
 
         int newCount = room.getCurrentPlayerCount() + 1;
         BigDecimal newPrize = room.getPrizePoolAmount().add(config.getEntryFeeAmount());
@@ -322,16 +335,11 @@ public class GameRoomServiceImpl implements GameRoomService {
         }
         schedulerPort.cancel(roomId, "fill-bots");
 
-        // Возвращаем баллы всем реальным участникам
+        // Release reserved balance for all real participants via Kafka (outbox, same transaction)
         List<GameParticipant> participants = participantRepository.list(GameParticipantQuery.byRoom(roomId));
-        GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
         for (GameParticipant participant : participants) {
             if (participant.isRealPlayer()) {
-                try {
-                    balancePort.release(participant.getUserId(), config.getEntryFeeAmount(), roomId);
-                } catch (Exception e) {
-                    log.error("Failed to release balance for participant {} in cancelled room {}", participant.getId(), roomId, e);
-                }
+                gameEventPort.publishBalanceRelease(participant.getUserId(), participant.getReservedPoints(), roomId);
             }
         }
 
@@ -367,25 +375,6 @@ public class GameRoomServiceImpl implements GameRoomService {
                 command.isBoostEnabled(),
                 command.maxBarrelSelection()
         );
-    }
-
-    private void reserveBalanceOrThrow(UUID userId, GameRoomConfig config, UUID roomId) {
-        try {
-            balancePort.reserve(userId, config.getEntryFeeAmount(), roomId);
-        } catch (Exception e) {
-            List<GameRoomDetails> alternatives = listRooms(
-                    GameRoomQuery.filtered(GameRoomStatus.WAITING, BigDecimal.ZERO,
-                            config.getEntryFeeAmount().subtract(BigDecimal.ONE),
-                            null, true, 0, 3));
-            List<Map<String, Object>> altList = alternatives.stream()
-                    .map(d -> Map.<String, Object>of(
-                            "roomId", d.room().getId().toString(),
-                            "entryFee", d.config().getEntryFeeAmount()))
-                    .toList();
-            throw ApiException.insufficientBalance(
-                    GameErrorMessages.insufficientBalanceForEntry(config.getEntryFeeAmount()),
-                    Map.of("required", config.getEntryFeeAmount(), "suggestedRooms", altList));
-        }
     }
 
     private void startFullRoom(UUID roomId) {

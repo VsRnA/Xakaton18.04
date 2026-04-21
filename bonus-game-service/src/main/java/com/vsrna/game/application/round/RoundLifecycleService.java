@@ -1,6 +1,7 @@
 package com.vsrna.game.application.round;
 
 import com.vsrna.game.application.bot.BotService;
+import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.port.GameSchedulerPort;
 import com.vsrna.game.application.prize.PrizeService;
@@ -65,7 +66,7 @@ public class RoundLifecycleService {
     private final PrizeService prizeService;
     private final GameHistoryRepository gameHistoryRepository;
     private final BotService botService;
-    private final BalanceCompensationHelper balanceCompensationHelper;
+    private final GameEventPort gameEventPort;
 
     @Transactional
     public void startRound(UUID roomId, int roundNumber) {
@@ -234,7 +235,9 @@ public class RoundLifecycleService {
             }
         }
 
-        balanceCompensationHelper.scheduleRelease(disqualifiedRealPlayers, roomId);
+        for (GameParticipant p : disqualifiedRealPlayers) {
+            gameEventPort.publishBalanceRelease(p.getUserId(), p.getReservedPoints(), roomId);
+        }
         return remaining;
     }
 
@@ -330,6 +333,8 @@ public class RoundLifecycleService {
 
         startRound(roomId, RoundConstants.ROUND_2);
 
-        balanceCompensationHelper.scheduleRelease(eliminated, roomId);
+        for (GameParticipant p : eliminated) {
+            gameEventPort.publishBalanceRelease(p.getUserId(), p.getReservedPoints(), roomId);
+        }
     }
 }

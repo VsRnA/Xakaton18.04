@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.domain.outbox.OutboxEvent;
 import com.vsrna.game.domain.outbox.OutboxEventRepository;
+import com.vsrna.game.infrastructure.kafka.event.BalanceCommandEvent;
 import com.vsrna.game.infrastructure.kafka.event.GameEntryReservedEvent;
 import com.vsrna.game.infrastructure.kafka.event.GameFinishedEvent;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class GameEventPublisher implements GameEventPort {
 
     private static final String TOPIC_FINISHED = "game.finished";
     private static final String TOPIC_ENTRY_RESERVED = "game.entry.reserved";
+    private static final String TOPIC_BALANCE_COMMAND = "balance.command";
 
     private final OutboxEventRepository outboxRepository;
     private final ObjectMapper objectMapper;
@@ -36,6 +38,30 @@ public class GameEventPublisher implements GameEventPort {
     public void publishEntryReserved(UUID userId, UUID roomId, BigDecimal amount) {
         GameEntryReservedEvent event = new GameEntryReservedEvent(userId, roomId, amount);
         enqueue("GAME_ROOM", roomId.toString(), "ENTRY_RESERVED", TOPIC_ENTRY_RESERVED, event);
+    }
+
+    @Override
+    public void publishBalanceReserve(UUID userId, BigDecimal amount, UUID roomId) {
+        enqueue("BALANCE", userId.toString(), "BALANCE_RESERVE", TOPIC_BALANCE_COMMAND,
+                new BalanceCommandEvent("RESERVE", userId, amount, roomId));
+    }
+
+    @Override
+    public void publishBalanceRelease(UUID userId, BigDecimal amount, UUID roomId) {
+        enqueue("BALANCE", userId.toString(), "BALANCE_RELEASE", TOPIC_BALANCE_COMMAND,
+                new BalanceCommandEvent("RELEASE", userId, amount, roomId));
+    }
+
+    @Override
+    public void publishBalanceAward(UUID userId, BigDecimal amount, UUID roomId) {
+        enqueue("BALANCE", userId.toString(), "BALANCE_AWARD", TOPIC_BALANCE_COMMAND,
+                new BalanceCommandEvent("AWARD", userId, amount, roomId));
+    }
+
+    @Override
+    public void publishBalanceDeduct(UUID userId, BigDecimal amount, UUID roomId) {
+        enqueue("BALANCE", userId.toString(), "BALANCE_DEDUCT", TOPIC_BALANCE_COMMAND,
+                new BalanceCommandEvent("DEDUCT", userId, amount, roomId));
     }
 
     private void enqueue(String aggregateType, String aggregateId, String eventType,

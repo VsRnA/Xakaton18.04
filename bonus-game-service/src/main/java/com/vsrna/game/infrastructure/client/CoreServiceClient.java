@@ -1,7 +1,6 @@
 package com.vsrna.game.infrastructure.client;
 
 import com.vsrna.game.application.port.BalancePort;
-import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.domain.exception.ApiException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,18 +20,15 @@ public class CoreServiceClient implements BalancePort {
 
     private static final String ERR_UNAVAILABLE = "Core service unavailable";
     private static final String ERR_BALANCE_CHECK_FAILED = "Balance check failed: ";
-    private static final String ERR_BALANCE_OPERATION_FAILED = "Balance operation failed: ";
 
     private final RestClient restClient;
     private final String internalSecret;
-    private final GameEventPort gameEventPort;
 
     public CoreServiceClient(
             @Value("${app.core.url}") String coreUrl,
             @Value("${app.internal.secret}") String internalSecret,
             @Value("${app.core.connect-timeout-seconds:5}") int connectTimeoutSeconds,
-            @Value("${app.core.read-timeout-seconds:10}") int readTimeoutSeconds,
-            GameEventPort gameEventPort) {
+            @Value("${app.core.read-timeout-seconds:10}") int readTimeoutSeconds) {
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(connectTimeoutSeconds))
                 .build();
@@ -43,32 +39,6 @@ public class CoreServiceClient implements BalancePort {
                 .requestFactory(factory)
                 .build();
         this.internalSecret = internalSecret;
-        this.gameEventPort = gameEventPort;
-    }
-
-    @Override
-    public void reserve(UUID userId, BigDecimal amount, UUID roomId) {
-        call("/internal/balance/reserve", new BalanceRequest(userId, amount, roomId));
-        gameEventPort.publishEntryReserved(userId, roomId, amount);
-        log.debug("Reserved balance: userId={}, amount={}, roomId={}", userId, amount, roomId);
-    }
-
-    @Override
-    public void release(UUID userId, BigDecimal amount, UUID roomId) {
-        call("/internal/balance/release", new BalanceRequest(userId, amount, roomId));
-        log.debug("Released balance: userId={}, amount={}, roomId={}", userId, amount, roomId);
-    }
-
-    @Override
-    public void award(UUID userId, BigDecimal amount, UUID roomId) {
-        call("/internal/balance/award", new BalanceRequest(userId, amount, roomId));
-        log.debug("Awarded balance: userId={}, amount={}, roomId={}", userId, amount, roomId);
-    }
-
-    @Override
-    public void deduct(UUID userId, BigDecimal amount, UUID roomId) {
-        call("/internal/balance/deduct", new BalanceRequest(userId, amount, roomId));
-        log.debug("Deducted balance: userId={}, amount={}, roomId={}", userId, amount, roomId);
     }
 
     @Override
@@ -88,26 +58,6 @@ public class CoreServiceClient implements BalancePort {
             throw ApiException.internal(ERR_UNAVAILABLE);
         }
     }
-
-    private void call(String path, Object body) {
-        try {
-            restClient.post()
-                    .uri(path)
-                    .header("X-Internal-Secret", internalSecret)
-                    .body(body)
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (RestClientResponseException e) {
-            log.error("Core service call failed: {} → status={}, body={}",
-                    path, e.getStatusCode(), e.getResponseBodyAsString());
-            throw ApiException.badRequest(ERR_BALANCE_OPERATION_FAILED + e.getStatusCode());
-        } catch (Exception e) {
-            log.error("Core service unavailable: {}", path, e);
-            throw ApiException.internal(ERR_UNAVAILABLE);
-        }
-    }
-
-    public record BalanceRequest(UUID userId, BigDecimal amount, UUID roomId) {}
 
     public record BalanceResponse(BigDecimal available, BigDecimal reserved) {}
 }

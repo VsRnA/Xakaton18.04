@@ -19,19 +19,20 @@ public final class GameErrorMessages {
     public static final String ROOM_ONLY_WAITING_CAN_CANCEL = "Only WAITING rooms can be cancelled";
     public static final String ROOM_NO_SUITABLE_FOUND = "No suitable WAITING room found for the given parameters";
     public static final String ROOM_CONFIG_HAS_ERRORS =
-            "Конфигурация содержит ошибки. Установите confirmWarnings=true для принудительного создания.";
+            "Room config has errors. Set confirmWarnings=true to force creation.";
 
     public static String insufficientBalanceForEntry(BigDecimal required) {
-        return "Недостаточно бонусных баллов для входа в комнату. Требуется: " + required;
+        return "Insufficient bonus points to join the room. Required: " + required;
     }
 
     // === Boost ===
     public static final String BOOST_NOT_ENABLED = "Boost is not enabled in this room";
     public static final String BOOST_WRONG_ROUND_STATUS = "Boost can only be purchased during the active round";
     public static final String BOOST_ALREADY_USED = "Boost already used in round 1 — only one boost allowed per game";
+    public static final String BOOST_ALREADY_PURCHASED_THIS_ROUND = "Boost already purchased in this round";
 
     public static String insufficientBalanceForBoost(BigDecimal required) {
-        return "Недостаточно баллов для покупки буста. Требуется: " + required;
+        return "Insufficient points to purchase boost. Required: " + required;
     }
 
     // === Selection ===

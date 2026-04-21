@@ -1,6 +1,7 @@
 package com.vsrna.game.application.round;
 
 import com.vsrna.game.application.port.BalancePort;
+import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.gameroom.GameRoomConfigQuery;
@@ -34,8 +35,8 @@ public class BoostService {
     private final GameParticipantRepository participantRepository;
     private final RoundResultRepository roundResultRepository;
     private final ParticipantRoundEntryRepository entryRepository;
-    private final BalanceCompensationHelper balanceCompensationHelper;
     private final BalancePort balancePort;
+    private final GameEventPort gameEventPort;
 
     @Transactional
     public void purchaseBoost(UUID roomId, UUID userId, int roundNumber) {
@@ -44,7 +45,7 @@ public class BoostService {
             throw ApiException.badRequest(GameErrorMessages.BOOST_NOT_ENABLED);
         }
 
-        // Проверка баланса до транзакции
+        // Check balance before any DB writes — fail fast if insufficient funds
         BigDecimal available = balancePort.getAvailableBalance(userId);
         if (available.compareTo(config.getBoostCostAmount()) < 0) {
             throw ApiException.insufficientBalance(
@@ -60,7 +61,16 @@ public class BoostService {
         }
 
         var participant = participantRepository.get(GameParticipantQuery.byRoomAndUser(roomId, userId));
+        var roundResult = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, roundNumber));
 
+        // Idempotency: prevent double-purchase in the current round
+        var existingEntry = entryRepository.find(
+                ParticipantRoundEntryQuery.byRoundResultAndParticipant(roundResult.getId(), participant.getId()));
+        if (existingEntry.isPresent() && existingEntry.get().isBoostPurchased()) {
+            throw ApiException.badRequest(GameErrorMessages.BOOST_ALREADY_PURCHASED_THIS_ROUND);
+        }
+
+        // Prevent boost in round 2 if already used in round 1
         if (roundNumber == RoundConstants.ROUND_2) {
             var round1Result = roundResultRepository.find(RoundResultQuery.byRoomAndRound(roomId, RoundConstants.ROUND_1));
             if (round1Result.isPresent()) {
@@ -75,23 +85,19 @@ public class BoostService {
         gameRoomRepository.update(GameRoomQuery.byId(roomId),
                 GameRoomPatch.prizePool(room.getPrizePoolAmount().add(config.getBoostCostAmount())));
 
-        var roundResult = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, roundNumber));
+        existingEntry.ifPresentOrElse(
+                entry -> entryRepository.update(
+                        ParticipantRoundEntryQuery.byId(entry.getId()),
+                        ParticipantRoundEntryPatch.boost()),
+                () -> {
+                    ParticipantRoundEntry entry = new ParticipantRoundEntry(
+                            roundResult.getId(), participant.getId());
+                    entry.setBoostPurchased(true);
+                    entryRepository.create(entry);
+                }
+        );
 
-        entryRepository.find(ParticipantRoundEntryQuery.byRoundResultAndParticipant(
-                roundResult.getId(), participant.getId()))
-                .ifPresentOrElse(
-                        entry -> entryRepository.update(
-                                ParticipantRoundEntryQuery.byId(entry.getId()),
-                                ParticipantRoundEntryPatch.boost()),
-                        () -> {
-                            ParticipantRoundEntry entry = new ParticipantRoundEntry(
-                                    roundResult.getId(), participant.getId());
-                            entry.setBoostPurchased(true);
-                            entryRepository.create(entry);
-                        }
-                );
-
-        balanceCompensationHelper.scheduleDeduct(userId, config.getBoostCostAmount(), roomId);
+        // Write deduct command atomically with entry update — guaranteed delivery via outbox
+        gameEventPort.publishBalanceDeduct(userId, config.getBoostCostAmount(), roomId);
     }
-
 }
