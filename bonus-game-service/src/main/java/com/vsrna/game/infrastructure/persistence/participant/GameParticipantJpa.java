@@ -48,6 +48,9 @@ public class GameParticipantJpa {
     @Column(name = "\"advancedToFinal\"", nullable = false)
     private boolean advancedToFinal;
 
+    @Column(name = "\"round2Ready\"", nullable = false)
+    private boolean round2Ready;
+
     @CreationTimestamp
     @Column(name = "\"joinedAt\"", nullable = false, updatable = false)
     private Instant joinedAt;

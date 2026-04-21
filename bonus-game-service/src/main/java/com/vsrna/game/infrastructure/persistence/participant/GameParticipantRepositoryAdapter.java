@@ -57,6 +57,7 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
         if (patch.advancedToFinal() != null) entity.setAdvancedToFinal(patch.advancedToFinal());
         if (patch.reservedPoints() != null) entity.setReservedPoints(patch.reservedPoints());
         if (patch.displayName() != null) entity.setDisplayName(patch.displayName());
+        if (patch.round2Ready() != null) entity.setRound2Ready(patch.round2Ready());
     }
 
     private GameParticipantJpa findJpa(GameParticipantQuery query) {
@@ -82,6 +83,7 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
         participant.setReservedPoints(jpaEntity.getReservedPoints());
         participant.setStatus(jpaEntity.getStatus());
         participant.setAdvancedToFinal(jpaEntity.isAdvancedToFinal());
+        participant.setRound2Ready(jpaEntity.isRound2Ready());
         participant.setJoinedAt(jpaEntity.getJoinedAt());
         return participant;
     }
@@ -96,6 +98,7 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
         jpaEntity.setReservedPoints(participant.getReservedPoints());
         jpaEntity.setStatus(participant.getStatus());
         jpaEntity.setAdvancedToFinal(participant.isAdvancedToFinal());
+        jpaEntity.setRound2Ready(participant.isRound2Ready());
         return jpaEntity;
     }
 }

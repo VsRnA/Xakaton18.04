@@ -8,6 +8,7 @@ public interface GameSchedulerPort {
     void scheduleRoundEnd(UUID roomId, int roundNumber);
     void scheduleBoostDecisionEnd(UUID roomId, int roundNumber);
     void scheduleBoostWindowEnd(UUID roomId, int roundNumber);
+    void scheduleFinalistsReadyTimeout(UUID roomId);
     void scheduleRoomOpen(UUID roomId, Instant startAt);
     void cancel(UUID roomId, String phase);
 }

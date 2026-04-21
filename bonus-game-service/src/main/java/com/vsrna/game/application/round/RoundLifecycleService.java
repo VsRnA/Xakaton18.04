@@ -32,6 +32,7 @@ import com.vsrna.game.domain.round.RoundResultPatch;
 import com.vsrna.game.domain.round.RoundResultQuery;
 import com.vsrna.game.domain.round.RoundResultRepository;
 import com.vsrna.game.domain.round.RoundResultStatus;
+import com.vsrna.game.domain.exception.ApiException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -307,21 +308,67 @@ public class RoundLifecycleService {
         return payload;
     }
 
+    @Transactional
+    public void markFinalistReady(UUID roomId, UUID userId) {
+        var room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
+        if (room.getStatus() != GameRoomStatus.WAITING_FINALISTS_READY) {
+            throw ApiException.badRequest("Room is not in finalists-ready phase");
+        }
+
+        GameParticipant participant = participantRepository.get(GameParticipantQuery.byRoomAndUser(roomId, userId));
+        if (participant.getStatus() != ParticipantStatus.FINALIST) {
+            throw ApiException.forbidden("Only finalists can confirm ready");
+        }
+        if (participant.isRound2Ready()) {
+            return;
+        }
+
+        participantRepository.update(GameParticipantQuery.byId(participant.getId()), GameParticipantPatch.markRound2Ready());
+
+        List<GameParticipant> finalists = participantRepository.list(GameParticipantQuery.byRoomAndStatus(roomId, ParticipantStatus.FINALIST));
+        boolean allReady = finalists.stream().allMatch(f -> f.getId().equals(participant.getId()) || f.isRound2Ready());
+        if (allReady) {
+            schedulerPort.cancel(roomId, "start-round2");
+            startRound(roomId, RoundConstants.ROUND_2);
+        }
+    }
+
+    @Transactional
+    public void startRound2AfterTimeout(UUID roomId) {
+        var room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
+        if (room.getStatus() != GameRoomStatus.WAITING_FINALISTS_READY) {
+            log.info("startRound2AfterTimeout: room {} is no longer in WAITING_FINALISTS_READY (status={}), skipping",
+                    roomId, room.getStatus());
+            return;
+        }
+        log.info("Finalists-ready timeout expired for room {}, starting round 2", roomId);
+        startRound(roomId, RoundConstants.ROUND_2);
+    }
+
     private void advanceToFinal(UUID roomId, List<ParticipantRoundEntry> sortedEntries, String winCriteria) {
         List<String> finalistIds = new ArrayList<>();
         List<GameParticipant> eliminated = new ArrayList<>();
+        int autoReadyCount = 0;
+        int finalistCount = 0;
 
         for (int i = 0; i < sortedEntries.size(); i++) {
-            GameParticipantPatch patch = i < RoundConstants.FINALISTS_COUNT
-                    ? GameParticipantPatch.advanceToFinal()
-                    : GameParticipantPatch.eliminate();
-            GameParticipant p = participantRepository.update(
-                    GameParticipantQuery.byId(sortedEntries.get(i).getParticipantId()), patch);
-
             if (i < RoundConstants.FINALISTS_COUNT) {
-                finalistIds.add(sortedEntries.get(i).getParticipantId().toString());
-            } else if (p.isRealPlayer()) {
-                eliminated.add(p);
+                GameParticipant p = participantRepository.update(
+                        GameParticipantQuery.byId(sortedEntries.get(i).getParticipantId()),
+                        GameParticipantPatch.advanceToFinal());
+                finalistIds.add(p.getId().toString());
+                finalistCount++;
+                if (p.isBot()) {
+                    participantRepository.update(GameParticipantQuery.byId(p.getId()), GameParticipantPatch.markRound2Ready());
+                    autoReadyCount++;
+                }
+            } else {
+                GameParticipant p = participantRepository.update(
+                        GameParticipantQuery.byId(sortedEntries.get(i).getParticipantId()),
+                        GameParticipantPatch.eliminate());
+                if (p.isRealPlayer()) {
+                    eliminated.add(p);
+                }
             }
         }
 
@@ -331,7 +378,12 @@ public class RoundLifecycleService {
                 "winCriteria", winCriteria
         ));
 
-        startRound(roomId, RoundConstants.ROUND_2);
+        if (autoReadyCount == finalistCount) {
+            startRound(roomId, RoundConstants.ROUND_2);
+        } else {
+            gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.status(GameRoomStatus.WAITING_FINALISTS_READY));
+            schedulerPort.scheduleFinalistsReadyTimeout(roomId);
+        }
 
         for (GameParticipant p : eliminated) {
             gameEventPort.publishBalanceRelease(p.getUserId(), p.getReservedPoints(), roomId);

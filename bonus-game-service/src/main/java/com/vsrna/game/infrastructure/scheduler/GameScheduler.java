@@ -30,6 +30,9 @@ public class GameScheduler implements GameSchedulerPort {
     @Value("${app.game.boost-window-seconds:5}")
     private int boostWindowSeconds;
 
+    @Value("${app.game.finalists-ready-timeout-seconds:15}")
+    private int finalistsReadyTimeoutSeconds;
+
     public Instant scheduleWaitTimerExpiry(UUID roomId) {
         Instant expiresAt = Instant.now().plusSeconds(waitTimerSeconds);
         schedule(FillWithBotsJob.class, "fill-bots-" + roomId,
@@ -57,6 +60,12 @@ public class GameScheduler implements GameSchedulerPort {
         data.put("roomId", roomId.toString());
         data.put("roundNumber", roundNumber);
         schedule(FinalizeRoundJob.class, "finalize-round-" + roomId + "-" + roundNumber, data, boostWindowSeconds);
+    }
+
+    public void scheduleFinalistsReadyTimeout(UUID roomId) {
+        JobDataMap data = new JobDataMap();
+        data.put("roomId", roomId.toString());
+        schedule(StartRound2Job.class, "start-round2-" + roomId, data, finalistsReadyTimeoutSeconds);
     }
 
     public void scheduleRoomOpen(UUID roomId, Instant startAt) {

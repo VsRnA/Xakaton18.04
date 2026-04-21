@@ -15,6 +15,8 @@ public interface RoundService {
     void resolveRound(UUID roomId, int roundNumber);
     void startBoostWindow(UUID roomId, int roundNumber);
     void finalizeRound(UUID roomId, int roundNumber);
+    void markFinalistReady(UUID roomId, UUID userId);
+    void startRound2AfterTimeout(UUID roomId);
     RoundResultDetails getRoundResult(UUID roomId, int roundNumber);
     GameHistory getGameHistory(UUID roomId);
     GameHistoryDetails getGameHistoryDetails(UUID roomId);

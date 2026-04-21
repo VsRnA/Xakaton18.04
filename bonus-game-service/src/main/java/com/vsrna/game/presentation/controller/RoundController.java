@@ -112,6 +112,21 @@ public class RoundController {
     }
 
     @Operation(
+            summary = "Подтвердить готовность к финальному раунду",
+            description = """
+                    Финалист подтверждает готовность к старту Round 2.
+                    Round 2 стартует когда оба финалиста подтвердили готовность, либо после истечения серверного таймаута.
+                    Пока оба не готовы, серверный таймер Round 2 не запущен.
+                    """
+    )
+    @PostMapping("/rounds/2/ready")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void confirmReady(@PathVariable UUID roomId, HttpServletRequest httpRequest) {
+        UUID userId = requireAuth(httpRequest);
+        roundService.markFinalistReady(roomId, userId);
+    }
+
+    @Operation(
             summary = "Верификация честности раунда (Provably Fair)",
             description = """
                     Позволяет игроку самостоятельно проверить, что результаты раунда не были подтасованы.

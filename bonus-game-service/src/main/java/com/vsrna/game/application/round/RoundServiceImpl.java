@@ -55,6 +55,16 @@ public class RoundServiceImpl implements RoundService {
     }
 
     @Override
+    public void markFinalistReady(UUID roomId, UUID userId) {
+        lifecycleService.markFinalistReady(roomId, userId);
+    }
+
+    @Override
+    public void startRound2AfterTimeout(UUID roomId) {
+        lifecycleService.startRound2AfterTimeout(roomId);
+    }
+
+    @Override
     public RoundResultDetails getRoundResult(UUID roomId, int roundNumber) {
         return roundResultService.getRoundResult(roomId, roundNumber);
     }

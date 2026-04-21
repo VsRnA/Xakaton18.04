@@ -21,6 +21,7 @@ public class GameParticipant {
     private BigDecimal reservedPoints;
     private ParticipantStatus status;
     private boolean advancedToFinal;
+    private boolean round2Ready;
     private Instant joinedAt;
 
     public boolean isRealPlayer() {
