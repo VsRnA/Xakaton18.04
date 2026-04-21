@@ -105,10 +105,6 @@ public class GameRoomServiceImpl implements GameRoomService {
         gameRoomRepository.update(GameRoomQuery.byId(roomId),
                 new GameRoomPatch(GameRoomStatus.WAITING, null, null, null, null, null));
 
-        Instant waitTimerExpiresAt = schedulerPort.scheduleWaitTimerExpiry(roomId);
-        gameRoomRepository.update(GameRoomQuery.byId(roomId),
-                new GameRoomPatch(null, null, null, null, null, waitTimerExpiresAt));
-
         notifierPort.publishRoomsUpdate(Map.of(
                 "type", "ROOM_CREATED",
                 "roomId", roomId.toString()
