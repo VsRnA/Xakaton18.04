@@ -8,6 +8,7 @@ import com.vsrna.game.application.round.RoundConstants;
 import com.vsrna.game.application.round.RoundService;
 import com.vsrna.game.domain.barrel.*;
 import com.vsrna.game.domain.exception.ApiException;
+import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.gameroom.*;
 import com.vsrna.game.domain.participant.*;
 import lombok.RequiredArgsConstructor;
@@ -141,30 +142,14 @@ public class GameRoomServiceImpl implements GameRoomService {
         GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
 
         if (room.getStatus() != GameRoomStatus.WAITING) {
-            throw ApiException.badRequest("Room is not accepting players");
+            throw ApiException.badRequest(GameErrorMessages.ROOM_NOT_ACCEPTING);
         }
         if (room.getCurrentPlayerCount() >= config.getMaxPlayers()) {
-            throw ApiException.badRequest("Room is full");
+            throw ApiException.badRequest(GameErrorMessages.ROOM_FULL);
         }
 
         // Reserve balance BEFORE any DB writes — fail fast if insufficient funds
-        try {
-            balancePort.reserve(userId, config.getEntryFeeAmount(), roomId);
-        } catch (Exception e) {
-            List<GameRoomDetails> alternatives = listRooms(
-                    GameRoomQuery.filtered(GameRoomStatus.WAITING, BigDecimal.ZERO,
-                            config.getEntryFeeAmount().subtract(BigDecimal.ONE),
-                            null, true, 0, 3));
-            List<Map<String, Object>> altList = alternatives.stream()
-                    .map(d -> Map.<String, Object>of(
-                            "roomId", d.room().getId().toString(),
-                            "entryFee", d.config().getEntryFeeAmount()))
-                    .toList();
-            throw ApiException.insufficientBalance(
-                    "Недостаточно бонусных баллов для входа в комнату. Требуется: "
-                            + config.getEntryFeeAmount(),
-                    Map.of("required", config.getEntryFeeAmount(), "suggestedRooms", altList));
-        }
+        reserveBalanceOrThrow(userId, config, roomId);
 
         GameParticipant participant = new GameParticipant(roomId, userId, false, displayName, config.getEntryFeeAmount());
         try {
@@ -177,7 +162,7 @@ public class GameRoomServiceImpl implements GameRoomService {
                 log.error("COMPENSATION NEEDED: failed to release balance after duplicate join " +
                           "userId={}, roomId={}: {}", userId, roomId, re.getMessage());
             }
-            throw ApiException.alreadyExists("GameParticipant", "User already joined this room");
+            throw ApiException.alreadyExists("GameParticipant", GameErrorMessages.ROOM_PARTICIPANT_ALREADY_JOINED);
         }
 
         int newCount = room.getCurrentPlayerCount() + 1;
@@ -195,12 +180,7 @@ public class GameRoomServiceImpl implements GameRoomService {
                     new GameRoomPatch(null, null, null, null, null, waitTimerExpiresAt)
             );
         } else if (newCount >= config.getMaxPlayers()) {
-            schedulerPort.cancel(roomId, "fill-bots");
-            roundService.startRound(roomId, 1);
-            notifierPort.publishRoomsUpdate(Map.of(
-                    "type", "ROOM_FULL",
-                    "roomId", roomId.toString()
-            ));
+            startFullRoom(roomId);
         }
 
         Instant expiresAt = waitTimerExpiresAt != null
@@ -294,7 +274,7 @@ public class GameRoomServiceImpl implements GameRoomService {
         }
         return rooms.stream()
                 .findFirst()
-                .orElseThrow(() -> ApiException.notFound("GameRoom", "No suitable WAITING room found for the given parameters"));
+                .orElseThrow(() -> ApiException.notFound("GameRoom", GameErrorMessages.ROOM_NO_SUITABLE_FOUND));
     }
 
     @Override
@@ -338,7 +318,7 @@ public class GameRoomServiceImpl implements GameRoomService {
     public void cancelRoom(UUID roomId, UUID adminUserId) {
         GameRoom room = gameRoomRepository.getForUpdate(GameRoomQuery.byId(roomId));
         if (room.getStatus() != GameRoomStatus.WAITING) {
-            throw ApiException.badRequest("Only WAITING rooms can be cancelled");
+            throw ApiException.badRequest(GameErrorMessages.ROOM_ONLY_WAITING_CAN_CANCEL);
         }
         schedulerPort.cancel(roomId, "fill-bots");
 
@@ -387,5 +367,33 @@ public class GameRoomServiceImpl implements GameRoomService {
                 command.isBoostEnabled(),
                 command.maxBarrelSelection()
         );
+    }
+
+    private void reserveBalanceOrThrow(UUID userId, GameRoomConfig config, UUID roomId) {
+        try {
+            balancePort.reserve(userId, config.getEntryFeeAmount(), roomId);
+        } catch (Exception e) {
+            List<GameRoomDetails> alternatives = listRooms(
+                    GameRoomQuery.filtered(GameRoomStatus.WAITING, BigDecimal.ZERO,
+                            config.getEntryFeeAmount().subtract(BigDecimal.ONE),
+                            null, true, 0, 3));
+            List<Map<String, Object>> altList = alternatives.stream()
+                    .map(d -> Map.<String, Object>of(
+                            "roomId", d.room().getId().toString(),
+                            "entryFee", d.config().getEntryFeeAmount()))
+                    .toList();
+            throw ApiException.insufficientBalance(
+                    GameErrorMessages.insufficientBalanceForEntry(config.getEntryFeeAmount()),
+                    Map.of("required", config.getEntryFeeAmount(), "suggestedRooms", altList));
+        }
+    }
+
+    private void startFullRoom(UUID roomId) {
+        schedulerPort.cancel(roomId, "fill-bots");
+        roundService.startRound(roomId, 1);
+        notifierPort.publishRoomsUpdate(Map.of(
+                "type", "ROOM_FULL",
+                "roomId", roomId.toString()
+        ));
     }
 }

@@ -4,6 +4,7 @@ import com.vsrna.game.application.round.GameHistoryDetails;
 import com.vsrna.game.application.round.RoundResultDetails;
 import com.vsrna.game.application.round.RoundService;
 import com.vsrna.game.domain.exception.ApiException;
+import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.history.GameHistory;
 import com.vsrna.game.presentation.dto.round.RoundDto;
 import com.vsrna.game.presentation.filter.AuthTokenFilter;
@@ -171,7 +172,7 @@ public class RoundController {
     private UUID requireAuth(HttpServletRequest request) {
         UUID userId = (UUID) request.getAttribute(AuthTokenFilter.USER_ID_ATTR);
         if (userId == null) {
-            throw ApiException.unauthorized("bearer token required");
+            throw ApiException.unauthorized(GameErrorMessages.AUTH_BEARER_REQUIRED);
         }
         return userId;
     }

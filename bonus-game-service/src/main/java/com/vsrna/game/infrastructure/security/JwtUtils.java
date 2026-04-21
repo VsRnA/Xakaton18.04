@@ -1,6 +1,7 @@
 package com.vsrna.game.infrastructure.security;
 
 import com.vsrna.game.domain.exception.ApiException;
+import com.vsrna.game.domain.exception.GameErrorMessages;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -46,7 +47,7 @@ public class JwtUtils {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (JwtException | IllegalArgumentException e) {
-            throw ApiException.unauthorized("invalid or expired token");
+            throw ApiException.unauthorized(GameErrorMessages.AUTH_TOKEN_INVALID);
         }
     }
 }

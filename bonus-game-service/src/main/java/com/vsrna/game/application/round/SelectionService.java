@@ -5,6 +5,7 @@ import com.vsrna.game.domain.barrel.Barrel;
 import com.vsrna.game.domain.barrel.BarrelQuery;
 import com.vsrna.game.domain.barrel.BarrelRepository;
 import com.vsrna.game.domain.exception.ApiException;
+import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.gameroom.GameRoomConfigQuery;
 import com.vsrna.game.domain.gameroom.GameRoomConfigRepository;
 import com.vsrna.game.domain.gameroom.GameRoomQuery;
@@ -64,20 +65,20 @@ public class SelectionService {
                                 List<UUID> barrelIds, Instant timestamp) {
         var config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
         if (barrelIds == null || barrelIds.isEmpty() || barrelIds.size() > config.getMaxBarrelSelection()) {
-            throw ApiException.badRequest("Select between 1 and " + config.getMaxBarrelSelection() + " barrels");
+            throw ApiException.badRequest(GameErrorMessages.selectionOutOfRange(config.getMaxBarrelSelection()));
         }
 
         var room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
         GameRoomStatus expectedStatus = roundNumber == 1 ? GameRoomStatus.ROUND_1 : GameRoomStatus.ROUND_2;
         if (room.getStatus() != expectedStatus) {
-            throw ApiException.badRequest("Round " + roundNumber + " is not in progress");
+            throw ApiException.badRequest(GameErrorMessages.roundNotInProgress(roundNumber));
         }
 
         List<Barrel> validBarrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
         Set<UUID> validIds = validBarrels.stream().map(Barrel::getId).collect(Collectors.toSet());
         for (UUID bid : barrelIds) {
             if (!validIds.contains(bid)) {
-                throw ApiException.badRequest("Barrel " + bid + " does not belong to this round");
+                throw ApiException.badRequest(GameErrorMessages.barrelNotInRound(bid));
             }
         }
 

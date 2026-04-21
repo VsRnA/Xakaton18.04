@@ -19,6 +19,10 @@ import java.util.UUID;
 @Component
 public class CoreServiceClient implements BalancePort {
 
+    private static final String ERR_UNAVAILABLE = "Core service unavailable";
+    private static final String ERR_BALANCE_CHECK_FAILED = "Balance check failed: ";
+    private static final String ERR_BALANCE_OPERATION_FAILED = "Balance operation failed: ";
+
     private final RestClient restClient;
     private final String internalSecret;
     private final GameEventPort gameEventPort;
@@ -78,10 +82,10 @@ public class CoreServiceClient implements BalancePort {
             return response != null && response.available() != null ? response.available() : BigDecimal.ZERO;
         } catch (RestClientResponseException e) {
             log.error("Core service getBalance failed: userId={} status={}", userId, e.getStatusCode());
-            throw ApiException.badRequest("Balance check failed: " + e.getStatusCode());
+            throw ApiException.badRequest(ERR_BALANCE_CHECK_FAILED + e.getStatusCode());
         } catch (Exception e) {
             log.error("Core service unavailable: getBalance userId={}", userId, e);
-            throw ApiException.internal("Core service unavailable");
+            throw ApiException.internal(ERR_UNAVAILABLE);
         }
     }
 
@@ -96,10 +100,10 @@ public class CoreServiceClient implements BalancePort {
         } catch (RestClientResponseException e) {
             log.error("Core service call failed: {} → status={}, body={}",
                     path, e.getStatusCode(), e.getResponseBodyAsString());
-            throw ApiException.badRequest("Balance operation failed: " + e.getStatusCode());
+            throw ApiException.badRequest(ERR_BALANCE_OPERATION_FAILED + e.getStatusCode());
         } catch (Exception e) {
             log.error("Core service unavailable: {}", path, e);
-            throw ApiException.internal("Core service unavailable");
+            throw ApiException.internal(ERR_UNAVAILABLE);
         }
     }
 

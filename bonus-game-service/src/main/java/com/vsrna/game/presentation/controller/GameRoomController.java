@@ -6,6 +6,7 @@ import com.vsrna.game.application.gameroom.GameRoomDetails;
 import com.vsrna.game.application.gameroom.GameRoomService;
 import com.vsrna.game.application.gameroom.NextGameOption;
 import com.vsrna.game.domain.exception.ApiException;
+import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.gameroom.GameRoomQuery;
 import com.vsrna.game.domain.gameroom.GameRoomStatus;
 import com.vsrna.game.presentation.dto.gameroom.GameRoomDto;
@@ -72,7 +73,7 @@ public class GameRoomController {
                 List<GameRoomDto.ConfigWarningResponse> warnings = evaluation.warnings().stream()
                         .map(w -> new GameRoomDto.ConfigWarningResponse(w.code(), w.severity(), w.message()))
                         .toList();
-                throw ApiException.unprocessable("Конфигурация содержит ошибки. Установите confirmWarnings=true для принудительного создания.",
+                throw ApiException.unprocessable(GameErrorMessages.ROOM_CONFIG_HAS_ERRORS,
                         java.util.Map.of("warnings", warnings));
             }
         }
@@ -237,7 +238,7 @@ public class GameRoomController {
     private UUID requireAuth(HttpServletRequest request) {
         UUID userId = (UUID) request.getAttribute(AuthTokenFilter.USER_ID_ATTR);
         if (userId == null) {
-            throw ApiException.unauthorized("bearer token required");
+            throw ApiException.unauthorized(GameErrorMessages.AUTH_BEARER_REQUIRED);
         }
         return userId;
     }
@@ -247,7 +248,7 @@ public class GameRoomController {
         UUID userId = requireAuth(request);
         Collection<String> roles = (Collection<String>) request.getAttribute(AuthTokenFilter.ROLES_ATTR);
         if (roles == null || !roles.contains("admin")) {
-            throw ApiException.forbidden("access denied: admin role required");
+            throw ApiException.forbidden(GameErrorMessages.AUTH_ADMIN_REQUIRED);
         }
         return userId;
     }

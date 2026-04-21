@@ -12,7 +12,6 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -53,24 +52,34 @@ public class RngServiceImpl implements RngPort {
         return seed;
     }
 
+    // SHA-256 hash chain in counter mode: each weight is derived from sha256(prev_hash || counter).
+    // Preserves all 256 bits of entropy from the seed — no XOR compression to long.
     private List<BigDecimal> generateWeights(byte[] seed, int count) {
-        long seedLong = readLong(seed, 0) ^ readLong(seed, 8) ^ readLong(seed, 16) ^ readLong(seed, 24);
-        Random rng = new Random(seedLong);
-
         List<BigDecimal> weights = new ArrayList<>(count);
+        byte[] current = seed;
         for (int i = 0; i < count; i++) {
-            int intWeight = rng.nextInt(WEIGHT_RANGE_SIZE) + WEIGHT_MIN;
+            current = sha256(concat(current, intToBytes(i)));
+            int raw = readInt(current, 0);
+            int intWeight = Math.floorMod(raw, WEIGHT_RANGE_SIZE) + WEIGHT_MIN;
             weights.add(BigDecimal.valueOf(intWeight));
         }
         return weights;
     }
 
-    private long readLong(byte[] buf, int offset) {
-        long v = 0;
-        for (int i = 0; i < 8; i++) {
-            v = (v << 8) | (buf[offset + i] & 0xFFL);
-        }
-        return v;
+    private byte[] concat(byte[] a, byte[] b) {
+        byte[] result = new byte[a.length + b.length];
+        System.arraycopy(a, 0, result, 0, a.length);
+        System.arraycopy(b, 0, result, a.length, b.length);
+        return result;
+    }
+
+    private byte[] intToBytes(int i) {
+        return new byte[]{(byte) (i >> 24), (byte) (i >> 16), (byte) (i >> 8), (byte) i};
+    }
+
+    private int readInt(byte[] buf, int offset) {
+        return ((buf[offset] & 0xFF) << 24) | ((buf[offset + 1] & 0xFF) << 16)
+                | ((buf[offset + 2] & 0xFF) << 8) | (buf[offset + 3] & 0xFF);
     }
 
     private byte[] longToBytes(long a, long b) {

@@ -5,6 +5,7 @@ import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.round.BalanceCompensationHelper;
 import com.vsrna.game.application.round.RoundScoringUtils;
 import com.vsrna.game.domain.exception.ApiException;
+import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.gameroom.*;
 import com.vsrna.game.domain.history.*;
 import com.vsrna.game.domain.participant.*;
@@ -53,7 +54,7 @@ public class PrizeServiceImpl implements PrizeService {
         ParticipantRoundEntry winnerEntry = entries.stream()
                 .filter(entry -> entry.getRankInRound() != null && entry.getRankInRound() == 1)
                 .findFirst()
-                .orElseThrow(() -> ApiException.internal("No winner found for room " + roomId));
+                .orElseThrow(() -> ApiException.internal(GameErrorMessages.noWinnerFound(roomId)));
 
         GameParticipant winner = participantRepository.get(
                 GameParticipantQuery.byId(winnerEntry.getParticipantId()));

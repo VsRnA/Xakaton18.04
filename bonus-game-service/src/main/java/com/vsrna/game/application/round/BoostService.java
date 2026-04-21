@@ -2,6 +2,7 @@ package com.vsrna.game.application.round;
 
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.domain.exception.ApiException;
+import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.gameroom.GameRoomConfigQuery;
 import com.vsrna.game.domain.gameroom.GameRoomConfigRepository;
 import com.vsrna.game.domain.gameroom.GameRoomPatch;
@@ -40,14 +41,14 @@ public class BoostService {
     public void purchaseBoost(UUID roomId, UUID userId, int roundNumber) {
         var config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
         if (!config.isBoostEnabled()) {
-            throw ApiException.badRequest("Boost is not enabled in this room");
+            throw ApiException.badRequest(GameErrorMessages.BOOST_NOT_ENABLED);
         }
 
         // Проверка баланса до транзакции
         BigDecimal available = balancePort.getAvailableBalance(userId);
         if (available.compareTo(config.getBoostCostAmount()) < 0) {
             throw ApiException.insufficientBalance(
-                    "Недостаточно баллов для покупки буста. Требуется: " + config.getBoostCostAmount(),
+                    GameErrorMessages.insufficientBalanceForBoost(config.getBoostCostAmount()),
                     Map.of("required", config.getBoostCostAmount(), "available", available));
         }
 
@@ -55,7 +56,7 @@ public class BoostService {
         GameRoomStatus expectedRoundStatus = roundNumber == RoundConstants.ROUND_1
                 ? GameRoomStatus.ROUND_1 : GameRoomStatus.ROUND_2;
         if (room.getStatus() != expectedRoundStatus) {
-            throw ApiException.badRequest("Boost can only be purchased during the active round");
+            throw ApiException.badRequest(GameErrorMessages.BOOST_WRONG_ROUND_STATUS);
         }
 
         var participant = participantRepository.get(GameParticipantQuery.byRoomAndUser(roomId, userId));
@@ -66,7 +67,7 @@ public class BoostService {
                 var round1Entry = entryRepository.find(
                         ParticipantRoundEntryQuery.byRoundResultAndParticipant(round1Result.get().getId(), participant.getId()));
                 if (round1Entry.isPresent() && round1Entry.get().isBoostPurchased()) {
-                    throw ApiException.badRequest("Boost already used in round 1 — only one boost allowed per game");
+                    throw ApiException.badRequest(GameErrorMessages.BOOST_ALREADY_USED);
                 }
             }
         }
