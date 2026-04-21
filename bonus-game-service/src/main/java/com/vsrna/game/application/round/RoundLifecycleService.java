@@ -133,6 +133,11 @@ public class RoundLifecycleService {
         for (Barrel barrel : barrels) barrelWeights.put(barrel.getId(), barrel.getWeight());
 
         // Вычисляем эффект буста для каждого участника, купившего буст
+        Map<UUID, UUID> participantUserIds = participantRepository.list(GameParticipantQuery.byRoom(roomId))
+                .stream()
+                .filter(p -> p.getUserId() != null)
+                .collect(Collectors.toMap(GameParticipant::getId, GameParticipant::getUserId));
+
         Map<String, Object> boostEffects = new LinkedHashMap<>();
         List<ParticipantRoundEntry> entries = entryRepository.list(
                 ParticipantRoundEntryQuery.byRoundResult(roundResult.getId()));
@@ -142,11 +147,15 @@ public class RoundLifecycleService {
                     ParticipantBarrelSelectionQuery.byEntry(entry.getId()));
             RoundScoringUtils.BoostEffect effect = RoundScoringUtils.computeBoostEffect(selections, barrelWeights);
             if (effect != null) {
+                UUID participantId = entry.getParticipantId();
+                UUID userId = participantUserIds.get(participantId);
                 Map<String, Object> effectData = new LinkedHashMap<>();
+                effectData.put("participantId", participantId.toString());
+                effectData.put("userId", userId != null ? userId.toString() : null);
                 effectData.put("barrelId", effect.barrelId().toString());
                 effectData.put("originalWeight", effect.originalWeight());
                 effectData.put("boostedWeight", effect.boostedWeight());
-                boostEffects.put(entry.getParticipantId().toString(), effectData);
+                boostEffects.put(participantId.toString(), effectData);
             }
         }
 
