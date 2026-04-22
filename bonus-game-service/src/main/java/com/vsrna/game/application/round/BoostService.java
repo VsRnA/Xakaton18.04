@@ -7,7 +7,6 @@ import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.gameroom.GameRoomConfigQuery;
 import com.vsrna.game.domain.gameroom.GameRoomConfigRepository;
-import com.vsrna.game.domain.gameroom.GameRoomPatch;
 import com.vsrna.game.domain.gameroom.GameRoomQuery;
 import com.vsrna.game.domain.gameroom.GameRoomRepository;
 import com.vsrna.game.domain.gameroom.GameRoomStatus;
@@ -83,9 +82,6 @@ public class BoostService {
                 }
             }
         }
-
-        gameRoomRepository.update(GameRoomQuery.byId(roomId),
-                GameRoomPatch.prizePool(room.getPrizePoolAmount().add(config.getBoostCostAmount())));
 
         existingEntry.ifPresentOrElse(
                 entry -> entryRepository.update(
