@@ -6,9 +6,11 @@ import com.vsrna.backend.infrastructure.security.JwtUtils;
 import com.vsrna.backend.presentation.dto.auth.AuthDto;
 import com.vsrna.backend.presentation.dto.user.UserDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -21,6 +23,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthDto.LoginResponse login(AuthDto.LoginRequest request) {
         User user = userService.validateCredentials(request.phone(), request.password());
         String token = jwtUtils.generateToken(user.getGuid(), user.getRoleKeywords(), user.getUsername());
+        log.info("User logged in: userId={}, username={}", user.getGuid(), user.getUsername());
         return new AuthDto.LoginResponse(token, UserDto.UserResponse.from(user));
     }
 
@@ -34,6 +37,7 @@ public class AuthServiceImpl implements AuthService {
                 request.username()
         ));
         String token = jwtUtils.generateToken(user.getGuid(), user.getRoleKeywords(), user.getUsername());
+        log.info("User registered: userId={}, username={}", user.getGuid(), user.getUsername());
         return new AuthDto.LoginResponse(token, UserDto.UserResponse.from(user));
     }
 }

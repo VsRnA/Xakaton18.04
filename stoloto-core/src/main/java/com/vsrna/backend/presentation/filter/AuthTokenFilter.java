@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -43,10 +44,15 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                             .map(Object::toString)
                             .toList());
                 }
+                MDC.put("userId", userId.toString());
             } catch (Exception ignored) {
             }
         }
 
-        chain.doFilter(request, response);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            MDC.remove("userId");
+        }
     }
 }

@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <property name="LOG_PATTERN"
+              value="%d{HH:mm:ss.SSS} %-5level %logger{30} [user=%X{userId:--}] %msg%n%ex"/>
 
     <!-- Консольный вывод — всегда -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <pattern>${LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
@@ -20,10 +21,10 @@
             </http>
             <format>
                 <label>
-                    <pattern>app=stoloto-core,level=%level,logger=%logger{36}</pattern>
+                    <pattern>application=stoloto-core,level=%level,logger=%logger{36}</pattern>
                 </label>
                 <message>
-                    <pattern>%d{ISO8601} [%thread] %level %logger{36} - %msg%n%ex</pattern>
+                    <pattern>${LOG_PATTERN}</pattern>
                 </message>
                 <sortByTime>true</sortByTime>
             </format>

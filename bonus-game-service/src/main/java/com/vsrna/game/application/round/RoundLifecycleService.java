@@ -73,10 +73,13 @@ public class RoundLifecycleService {
 
     @Transactional
     public void startRound(UUID roomId, int roundNumber) {
+        log.info("Starting round {} for room {}", roundNumber, roomId);
+
         if (roundNumber == RoundConstants.ROUND_1) {
             List<GameParticipant> active = participantRepository.list(
                     GameParticipantQuery.byRoomAndStatus(roomId, ParticipantStatus.ACTIVE));
             if (active.size() <= RoundConstants.FINALISTS_COUNT) {
+                log.info("Room {} has only {} active participants, bypassing round 1", roomId, active.size());
                 bypassRound1(roomId, active);
                 return;
             }
@@ -102,12 +105,13 @@ public class RoundLifecycleService {
                 "seedHash", commitment.seedHash(),
                 "expiresAt", Instant.now().plusSeconds(30).toEpochMilli()
         ));
+        log.info("Round {} started for room {}, {} barrels, seedHash={}", roundNumber, roomId, barrels.size(), commitment.seedHash());
         gameEventLogService.log(roomId, "ROUND_STARTED", Map.of("round", roundNumber));
     }
 
     @Transactional
     public void resolveRound(UUID roomId, int roundNumber) {
-        log.info("Resolving round {} for room {}", roundNumber, roomId);
+        log.info("Resolving round {} for room {}: revealing RNG seed and assigning barrel weights", roundNumber, roomId);
 
         var roundResult = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, roundNumber));
         List<BigDecimal> weights = rngPort.reveal(roundResult.getRawSeed(), RoundConstants.BARRELS_PER_ROUND);
@@ -157,7 +161,7 @@ public class RoundLifecycleService {
 
     @Transactional
     public void finalizeRound(UUID roomId, int roundNumber) {
-        log.info("Finalizing round {} for room {}", roundNumber, roomId);
+        log.info("Finalizing round {} for room {}: scoring entries and determining winner", roundNumber, roomId);
 
         var roundResult = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, roundNumber));
         List<Barrel> barrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
@@ -203,6 +207,9 @@ public class RoundLifecycleService {
         roundCompletedPayload.put("disqualifiedIds", disqualifiedIds);
         notifierPort.publishRoundEvent(roomId, roundCompletedPayload);
 
+        String winnerId = entries.isEmpty() ? "none" : entries.get(0).getParticipantId().toString();
+        log.info("Round {} completed for room {}: winner={}, criteria={}, participants={}",
+                roundNumber, roomId, winnerId, winCriteria, entries.size());
         gameEventLogService.log(roomId, "ROUND_COMPLETED",
                 Map.of("round", roundNumber, "winCriteria", winCriteria));
 

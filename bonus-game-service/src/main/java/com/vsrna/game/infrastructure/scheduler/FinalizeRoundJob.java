@@ -1,6 +1,7 @@
 package com.vsrna.game.infrastructure.scheduler;
 
 import com.vsrna.game.application.round.RoundService;
+import com.vsrna.game.infrastructure.util.MdcContext;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
@@ -20,11 +21,11 @@ public class FinalizeRoundJob implements Job {
     public void execute(JobExecutionContext ctx) {
         UUID roomId = UUID.fromString(ctx.getMergedJobDataMap().getString("roomId"));
         int roundNumber = ctx.getMergedJobDataMap().getInt("roundNumber");
-        log.info("FinalizeRoundJob executing for room {} round {}", roomId, roundNumber);
-        try {
+        try (var mdc = MdcContext.of("roomId", roomId.toString(), "round", String.valueOf(roundNumber))) {
+            log.info("FinalizeRoundJob executing");
             roundService.finalizeRound(roomId, roundNumber);
         } catch (Exception e) {
-            log.error("FinalizeRoundJob failed for room {} round {}: {}", roomId, roundNumber, e.getMessage(), e);
+            log.error("FinalizeRoundJob failed: {}", e.getMessage(), e);
         }
     }
 }

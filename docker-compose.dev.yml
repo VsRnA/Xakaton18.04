@@ -60,6 +60,7 @@ services:
       - KAFKA_BOOTSTRAP=kafka:9092
       - ADMIN_USER=${ADMIN_USER}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SPRING_PROFILES_ACTIVE=docker
 
   bonus-game-service:
     build:
@@ -81,6 +82,7 @@ services:
       - INTERNAL_SECRET=${INTERNAL_SECRET}
       - CORE_SERVICE_URL=http://stoloto-core:8080
       - KAFKA_BOOTSTRAP=kafka:9092
+      - SPRING_PROFILES_ACTIVE=docker
 
   # ── Observability stack ──────────────────────────────────────
   prometheus:
@@ -107,15 +109,6 @@ services:
       - ./monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
-
-  promtail:
-    image: grafana/promtail:3.0.0
-    volumes:
-      - ./monitoring/promtail/config.yml:/etc/promtail/config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      - loki
 
   grafana:
     image: grafana/grafana:10.4.2
