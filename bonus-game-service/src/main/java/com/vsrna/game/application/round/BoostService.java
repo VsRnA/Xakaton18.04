@@ -1,5 +1,6 @@
 package com.vsrna.game.application.round;
 
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.domain.exception.ApiException;
@@ -37,6 +38,7 @@ public class BoostService {
     private final ParticipantRoundEntryRepository entryRepository;
     private final BalancePort balancePort;
     private final GameEventPort gameEventPort;
+    private final GameEventLogService gameEventLogService;
 
     @Transactional
     public void purchaseBoost(UUID roomId, UUID userId, int roundNumber) {
@@ -99,5 +101,10 @@ public class BoostService {
 
         // Write deduct command atomically with entry update — guaranteed delivery via outbox
         gameEventPort.publishBalanceDeduct(userId, config.getBoostCostAmount(), roomId);
+        gameEventLogService.log(roomId, "BOOST_PURCHASED", Map.of(
+                "userId", userId.toString(),
+                "round", roundNumber,
+                "cost", config.getBoostCostAmount()
+        ));
     }
 }

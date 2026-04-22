@@ -122,8 +122,11 @@ public class PrizeServiceImpl implements PrizeService {
         gameEventPort.publishGameFinished(roomId, winnerUserId, winner.isBot(),
                 prizePool, prizeAwarded, systemRevenue, winCriteria);
 
-        gameEventLogService.log(roomId, "GAME_FINISHED",
-                "winnerId=" + winner.getId() + " prize=" + prizeAwarded + " criteria=" + winCriteria);
+        gameEventLogService.log(roomId, "GAME_FINISHED", Map.of(
+                "winnerId", winner.getId().toString(),
+                "prize", prizeAwarded,
+                "criteria", winCriteria
+        ));
 
         log.info("Room {} finished. Winner: {}, prize: {}", roomId, winner.getId(), prizeAwarded);
 

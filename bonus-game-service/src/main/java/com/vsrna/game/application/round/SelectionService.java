@@ -1,5 +1,6 @@
 package com.vsrna.game.application.round;
 
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.domain.barrel.Barrel;
 import com.vsrna.game.domain.barrel.BarrelQuery;
@@ -49,6 +50,7 @@ public class SelectionService {
     private final ParticipantRoundEntryRepository entryRepository;
     private final ParticipantBarrelSelectionRepository selectionRepository;
     private final GameNotifierPort notifierPort;
+    private final GameEventLogService gameEventLogService;
 
     @Transactional(readOnly = true)
     public List<Barrel> getShuffledBarrels(UUID roomId, UUID userId, int roundNumber) {
@@ -115,6 +117,13 @@ public class SelectionService {
                 "roundNumber", roundNumber,
                 "selectedCount", selectedCount,
                 "totalPlayers", totalPlayers
+        ));
+
+        gameEventLogService.log(roomId, "BARREL_SELECTED", Map.of(
+                "userId", userId.toString(),
+                "round", roundNumber,
+                "barrels", barrelIds.stream().map(UUID::toString).toList(),
+                "count", barrelIds.size()
         ));
     }
 }

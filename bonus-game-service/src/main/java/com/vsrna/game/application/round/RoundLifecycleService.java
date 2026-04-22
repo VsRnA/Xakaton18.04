@@ -102,7 +102,7 @@ public class RoundLifecycleService {
                 "seedHash", commitment.seedHash(),
                 "expiresAt", Instant.now().plusSeconds(30).toEpochMilli()
         ));
-        gameEventLogService.log(roomId, "ROUND_STARTED", "round=" + roundNumber);
+        gameEventLogService.log(roomId, "ROUND_STARTED", Map.of("round", roundNumber));
     }
 
     @Transactional
@@ -117,6 +117,10 @@ public class RoundLifecycleService {
             barrels.get(i).setWeight(weights.get(i));
         }
         barrelRepository.updateAll(BarrelQuery.byRoomAndRound(roomId, roundNumber), barrels);
+
+        Map<String, Object> weightsMap = new java.util.LinkedHashMap<>();
+        for (Barrel b : barrels) weightsMap.put(b.getId().toString(), b.getWeight());
+        gameEventLogService.log(roomId, "WEIGHTS_REVEALED", Map.of("round", roundNumber, "weights", weightsMap));
 
         GameRoomStatus decisionStatus = roundNumber == RoundConstants.ROUND_1
                 ? GameRoomStatus.BOOST_DECISION_1 : GameRoomStatus.BOOST_DECISION_2;
@@ -177,6 +181,7 @@ public class RoundLifecycleService {
         entries = eliminateNoSelectionParticipants(entries, selectionsByEntry, roomId, disqualifiedIds);
 
         scoreAndRankEntries(entries, selectionsByEntry, barrelWeights);
+        logParticipantScores(roomId, roundNumber, entries, selectionsByEntry, barrelWeights);
         String winCriteria = RoundScoringUtils.determineWinCriteria(entries);
 
         for (int i = 0; i < entries.size(); i++) {
@@ -198,8 +203,8 @@ public class RoundLifecycleService {
         roundCompletedPayload.put("disqualifiedIds", disqualifiedIds);
         notifierPort.publishRoundEvent(roomId, roundCompletedPayload);
 
-        gameEventLogService.log(roomId, "ROUND_COMPLETED", "round=" + roundNumber
-                + " winCriteria=" + winCriteria);
+        gameEventLogService.log(roomId, "ROUND_COMPLETED",
+                Map.of("round", roundNumber, "winCriteria", winCriteria));
 
         if (roundNumber == RoundConstants.ROUND_1) {
             advanceToFinal(roomId, entries, winCriteria);
@@ -271,6 +276,44 @@ public class RoundLifecycleService {
                 .thenComparingInt(ParticipantRoundEntry::getSelectionCount)
                 .thenComparing(ParticipantRoundEntry::getSelectionTimestamp,
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())));
+    }
+
+    private void logParticipantScores(UUID roomId, int roundNumber,
+                                       List<ParticipantRoundEntry> entries,
+                                       Map<UUID, List<ParticipantBarrelSelection>> selectionsByEntry,
+                                       Map<UUID, BigDecimal> barrelWeights) {
+        for (ParticipantRoundEntry entry : entries) {
+            List<ParticipantBarrelSelection> sels = selectionsByEntry.getOrDefault(entry.getId(), List.of());
+
+            List<String> barrelIds = sels.stream()
+                    .map(s -> s.getBarrelId().toString())
+                    .toList();
+            BigDecimal totalRaw = sels.stream()
+                    .map(s -> barrelWeights.getOrDefault(s.getBarrelId(), BigDecimal.ZERO))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("participantId", entry.getParticipantId().toString());
+            detail.put("round", roundNumber);
+            detail.put("score", entry.getTotalScore());
+            detail.put("barrels", barrelIds);
+            detail.put("totalWeight", totalRaw);
+
+            if (entry.isBoostPurchased()) {
+                RoundScoringUtils.BoostEffect effect = RoundScoringUtils.computeBoostEffect(sels, barrelWeights);
+                if (effect != null) {
+                    detail.put("boost", Map.of(
+                            "barrelId", effect.barrelId().toString(),
+                            "from", effect.originalWeight(),
+                            "to", effect.boostedWeight()
+                    ));
+                } else {
+                    detail.put("boost", "purchased,no-effect");
+                }
+            }
+
+            gameEventLogService.log(roomId, "PARTICIPANT_SCORED", detail);
+        }
     }
 
     private Map<UUID, BigDecimal> buildBarrelWeightMap(List<Barrel> barrels) {
@@ -422,7 +465,7 @@ public class RoundLifecycleService {
                 "winCriteria", winCriteria
         ));
         gameEventLogService.log(roomId, "FINALISTS_ANNOUNCED",
-                "finalists=" + String.join(",", finalistIds) + " criteria=" + winCriteria);
+                Map.of("finalists", finalistIds, "criteria", winCriteria));
 
         if (autoReadyCount == finalistCount) {
             startRound(roomId, RoundConstants.ROUND_2);

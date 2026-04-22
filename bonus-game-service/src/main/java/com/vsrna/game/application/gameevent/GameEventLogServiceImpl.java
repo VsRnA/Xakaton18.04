@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -18,7 +19,7 @@ public class GameEventLogServiceImpl implements GameEventLogService {
 
     @Override
     @Transactional
-    public void log(UUID roomId, String eventType, String details) {
+    public void log(UUID roomId, String eventType, Map<String, Object> details) {
         repository.save(new GameEventLog(roomId, eventType, details));
     }
 

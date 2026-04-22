@@ -88,14 +88,14 @@ public class GameRoomServiceImpl implements GameRoomService {
                     "roomId", createdRoom.getId().toString()
             ));
             gameEventLogService.log(createdRoom.getId(), "ROOM_SCHEDULED",
-                    "scheduledAt=" + command.scheduledStartAt());
+                    Map.of("scheduledAt", command.scheduledStartAt().toString()));
         } else {
             notifierPort.publishRoomsUpdate(Map.of(
                     "type", "ROOM_CREATED",
                     "roomId", createdRoom.getId().toString()
             ));
             gameEventLogService.log(createdRoom.getId(), "ROOM_CREATED",
-                    "entryFee=" + command.entryFeeAmount() + " maxPlayers=" + command.maxPlayers());
+                    Map.of("entryFee", command.entryFeeAmount(), "maxPlayers", command.maxPlayers()));
         }
 
         return new GameRoomDetails(createdRoom, config);
@@ -183,7 +183,7 @@ public class GameRoomServiceImpl implements GameRoomService {
         // Write balance reserve command and notification atomically with participant creation
         gameEventPort.publishBalanceReserve(userId, config.getEntryFeeAmount(), roomId);
         gameEventPort.publishEntryReserved(userId, roomId, config.getEntryFeeAmount());
-        gameEventLogService.log(roomId, "PLAYER_JOINED", "userId=" + userId);
+        gameEventLogService.log(roomId, "PLAYER_JOINED", Map.of("userId", userId.toString()));
 
         int newCount = room.getCurrentPlayerCount() + 1;
         BigDecimal newPrize = room.getPrizePoolAmount().add(config.getEntryFeeAmount());
@@ -248,7 +248,7 @@ public class GameRoomServiceImpl implements GameRoomService {
                     "type", "ROOM_STARTED",
                     "roomId", roomId.toString()
             ));
-            gameEventLogService.log(roomId, "ROOM_STARTED", "totalPlayers=" + total);
+            gameEventLogService.log(roomId, "ROOM_STARTED", Map.of("totalPlayers", total));
         } else {
             log.warn("fillWithBots: not enough participants ({}) to start room {}", total, roomId);
         }
@@ -363,7 +363,7 @@ public class GameRoomServiceImpl implements GameRoomService {
                 "type", "ROOM_CANCELLED",
                 "roomId", roomId.toString()
         ));
-        gameEventLogService.log(roomId, "ROOM_CANCELLED", "cancelledBy=" + adminUserId);
+        gameEventLogService.log(roomId, "ROOM_CANCELLED", Map.of("cancelledBy", adminUserId.toString()));
 
         log.info("Room {} cancelled by admin {}", roomId, adminUserId);
     }

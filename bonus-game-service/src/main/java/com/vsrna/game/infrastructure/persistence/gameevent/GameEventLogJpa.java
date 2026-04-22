@@ -25,7 +25,7 @@ public class GameEventLogJpa {
     @Column(name = "\"eventType\"", nullable = false, length = 64)
     private String eventType;
 
-    @Column(name = "details", length = 500)
+    @Column(name = "details", columnDefinition = "text")
     private String details;
 
     @Column(name = "\"occurredAt\"", nullable = false)
