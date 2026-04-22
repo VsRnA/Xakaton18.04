@@ -67,9 +67,10 @@ public class AnalyticsController {
         List<AnalyticsDto.AdminGameRecord> records = games.stream()
                 .map(g -> new AnalyticsDto.AdminGameRecord(
                         g.getGameRoomId(), g.getCompletedAt(), g.getWinnerUserId(),
-                        g.isWinnerIsBot(), g.getPrizeAwarded(), g.getSystemRevenue(),
-                        g.getWinCriteria(), g.getRealPlayersCount(), g.getBotCount(),
-                        g.getBoostUsedCount(), g.isWinnerUsedBoost()))
+                        g.isWinnerIsBot(), g.getEntryFeeAmount(), g.getRealPlayersRevenue(),
+                        g.getPrizeAwarded(), g.getSystemBalance(), g.getWinCriteria(),
+                        g.getRealPlayersCount(), g.getBotCount(),
+                        g.isBoostAvailable(), g.getBoostUsedCount(), g.getBoostRevenue()))
                 .toList();
         return ResponseEntity.ok(new AnalyticsDto.AdminGamesResponse(records, records.size()));
     }

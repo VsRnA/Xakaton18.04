@@ -1,5 +1,6 @@
 package com.vsrna.game.presentation.dto.round;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -71,13 +72,28 @@ public class RoundDto {
             UUID gameRoomId,
             UUID winnerUserId,
             boolean winnerIsBot,
+            @Schema(description = "Стоимость входа в игру (бонусных баллов)")
+            BigDecimal entryFeeAmount,
+            @Schema(description = "Сумма взносов реальных игроков (realPlayersCount × entryFeeAmount)")
+            BigDecimal realPlayersRevenue,
+            @Schema(description = "Выплаченный приз победителю. 0 если победил бот")
             BigDecimal prizeAwarded,
-            BigDecimal systemRevenue,
+            @Schema(description = """
+                    Баланс системы по итогам игры:
+                    systemRevenue (% от призового фонда) + totalBoostBonuses − botCount × entryFeeAmount.
+                    Положительный — бот победил, система в плюсе.
+                    Отрицательный — реальный игрок победил, система покрыла часть приза из вложений в ботов.""")
+            BigDecimal systemBalance,
             java.time.Instant completedAt,
             String winCriteria,
             int realPlayersCount,
             int botCount,
-            boolean winnerUsedBoost,
+            @Schema(description = "Был ли буст доступен в этой игре (задаётся конфигурацией комнаты)")
+            boolean boostAvailable,
+            @Schema(description = "Сколько раз буст был куплен за игру (все раунды)")
+            int boostUsedCount,
+            @Schema(description = "Суммарный доход системы от продажи бустов в этой игре")
+            BigDecimal totalBoostBonuses,
             List<ParticipantHistoryEntry> participants
     ) {}
 }

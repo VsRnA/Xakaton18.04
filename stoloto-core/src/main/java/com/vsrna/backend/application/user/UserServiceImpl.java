@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService {
         user.getRoles().add(role);
 
         User created = userRepository.create(user);
-        balanceRepository.create(new UserBalance(created.getGuid(), BigDecimal.valueOf(1000)));
+        balanceRepository.create(new UserBalance(created.getGuid(), BigDecimal.valueOf(1_000_000)));
         return created;
     }
 

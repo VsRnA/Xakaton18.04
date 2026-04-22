@@ -98,7 +98,8 @@ public class PrizeServiceImpl implements PrizeService {
         GameHistory history = new GameHistory(roomId, winnerUserId, winner.isBot(),
                 prizeAwarded, systemRevenue, winCriteria,
                 realPlayersCount, botCount, realPlayersRevenue,
-                boostRevenue, boostUsedCount, winnerUsedBoost);
+                boostRevenue, boostUsedCount, winnerUsedBoost,
+                config.getEntryFeeAmount(), config.isBoostEnabled());
         gameHistoryRepository.create(history);
 
         gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.finished(Instant.now()));

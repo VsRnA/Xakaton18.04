@@ -64,4 +64,10 @@ public class GameHistoryJpa {
 
     @Column(name = "\"winnerUsedBoost\"", nullable = false)
     private boolean winnerUsedBoost;
+
+    @Column(name = "\"entryFeeAmount\"", precision = 12, scale = 2)
+    private BigDecimal entryFeeAmount;
+
+    @Column(name = "\"boostAvailable\"", nullable = false)
+    private boolean boostAvailable;
 }

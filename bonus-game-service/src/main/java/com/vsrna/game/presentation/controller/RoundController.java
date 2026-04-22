@@ -181,9 +181,11 @@ public class RoundController {
                 .toList();
         return new RoundDto.GameHistoryDetailResponse(
                 h.getGameRoomId(), h.getWinnerUserId(), h.isWinnerIsBot(),
-                h.getPrizeAwarded(), h.getSystemRevenue(), h.getCompletedAt(),
-                h.getWinCriteria(), h.getRealPlayersCount(), h.getBotCount(),
-                h.isWinnerUsedBoost(), participants
+                h.getEntryFeeAmount(), h.getRealPlayersRevenue(), h.getPrizeAwarded(),
+                h.getSystemBalance(), h.getCompletedAt(), h.getWinCriteria(),
+                h.getRealPlayersCount(), h.getBotCount(),
+                h.isBoostAvailable(), h.getBoostUsedCount(), h.getBoostRevenue(),
+                participants
         );
     }
 

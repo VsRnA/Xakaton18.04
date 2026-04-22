@@ -2,6 +2,7 @@ package com.vsrna.game.presentation.dto.analytics;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.vsrna.game.application.analytics.GameAnalyticsSummary;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -76,13 +77,28 @@ public class AnalyticsDto {
             Instant completedAt,
             java.util.UUID winnerUserId,
             boolean winnerIsBot,
+            @Schema(description = "Стоимость входа в игру (бонусных баллов)")
+            BigDecimal entryFeeAmount,
+            @Schema(description = "Сумма взносов реальных игроков (realPlayersCount × entryFeeAmount)")
+            BigDecimal realPlayersRevenue,
+            @Schema(description = "Выплаченный приз победителю. 0 если победил бот")
             BigDecimal prizeAwarded,
-            BigDecimal systemRevenue,
+            @Schema(description = """
+                    Баланс системы по итогам игры:
+                    systemRevenue (% от призового фонда) + totalBoostBonuses − botCount × entryFeeAmount.
+                    Положительный — бот победил, система в плюсе.
+                    Отрицательный — реальный игрок победил, система покрыла часть приза из вложений в ботов.""")
+            BigDecimal systemBalance,
+            @Schema(description = "Критерий победы: HIGHEST_SCORE | TIEBREAK_SELECTION_COUNT | TIEBREAK_EARLIEST")
             String winCriteria,
             int realPlayersCount,
             int botCount,
+            @Schema(description = "Был ли буст доступен в этой игре (задаётся конфигурацией комнаты)")
+            boolean boostAvailable,
+            @Schema(description = "Сколько раз буст был куплен за игру (все раунды)")
             int boostUsedCount,
-            boolean winnerUsedBoost
+            @Schema(description = "Суммарный доход системы от продажи бустов в этой игре")
+            BigDecimal totalBoostBonuses
     ) {}
 
     public record AdminGamesResponse(

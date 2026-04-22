@@ -75,6 +75,8 @@ public class GameHistoryRepositoryAdapter implements GameHistoryRepository {
         history.setBoostRevenue(jpaEntity.getBoostRevenue());
         history.setBoostUsedCount(jpaEntity.getBoostUsedCount());
         history.setWinnerUsedBoost(jpaEntity.isWinnerUsedBoost());
+        history.setEntryFeeAmount(jpaEntity.getEntryFeeAmount());
+        history.setBoostAvailable(jpaEntity.isBoostAvailable());
         return history;
     }
 
@@ -95,6 +97,8 @@ public class GameHistoryRepositoryAdapter implements GameHistoryRepository {
         jpaEntity.setBoostRevenue(history.getBoostRevenue());
         jpaEntity.setBoostUsedCount(history.getBoostUsedCount());
         jpaEntity.setWinnerUsedBoost(history.isWinnerUsedBoost());
+        jpaEntity.setEntryFeeAmount(history.getEntryFeeAmount());
+        jpaEntity.setBoostAvailable(history.isBoostAvailable());
         return jpaEntity;
     }
 }
