@@ -192,8 +192,6 @@ public class GameRoomServiceImpl implements GameRoomService {
                     GameRoomQuery.byId(roomId),
                     new GameRoomPatch(null, null, null, null, null, waitTimerExpiresAt)
             );
-        } else if (newCount >= config.getMaxPlayers()) {
-            startFullRoom(roomId);
         }
 
         Instant expiresAt = waitTimerExpiresAt != null
@@ -377,12 +375,4 @@ public class GameRoomServiceImpl implements GameRoomService {
         );
     }
 
-    private void startFullRoom(UUID roomId) {
-        schedulerPort.cancel(roomId, "fill-bots");
-        roundService.startRound(roomId, 1);
-        notifierPort.publishRoomsUpdate(Map.of(
-                "type", "ROOM_FULL",
-                "roomId", roomId.toString()
-        ));
-    }
 }
