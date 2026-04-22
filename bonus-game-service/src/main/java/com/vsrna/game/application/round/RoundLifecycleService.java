@@ -71,6 +71,15 @@ public class RoundLifecycleService {
 
     @Transactional
     public void startRound(UUID roomId, int roundNumber) {
+        if (roundNumber == RoundConstants.ROUND_1) {
+            List<GameParticipant> active = participantRepository.list(
+                    GameParticipantQuery.byRoomAndStatus(roomId, ParticipantStatus.ACTIVE));
+            if (active.size() <= RoundConstants.FINALISTS_COUNT) {
+                bypassRound1(roomId, active);
+                return;
+            }
+        }
+
         GameRoomStatus newStatus = roundNumber == RoundConstants.ROUND_1 ? GameRoomStatus.ROUND_1 : GameRoomStatus.ROUND_2;
         gameRoomRepository.update(GameRoomQuery.byId(roomId),
                 new GameRoomPatch(newStatus, null, null, Instant.now(), null, null));
@@ -237,7 +246,7 @@ public class RoundLifecycleService {
         }
 
         for (GameParticipant p : disqualifiedRealPlayers) {
-            gameEventPort.publishBalanceRelease(p.getUserId(), p.getReservedPoints(), roomId);
+            gameEventPort.publishBalanceDeductReserved(p.getUserId(), p.getReservedPoints(), roomId);
         }
         return remaining;
     }
@@ -345,6 +354,35 @@ public class RoundLifecycleService {
         startRound(roomId, RoundConstants.ROUND_2);
     }
 
+    private void bypassRound1(UUID roomId, List<GameParticipant> participants) {
+        List<String> finalistIds = new ArrayList<>();
+        int autoReadyCount = 0;
+
+        for (GameParticipant p : participants) {
+            GameParticipant updated = participantRepository.update(
+                    GameParticipantQuery.byId(p.getId()),
+                    GameParticipantPatch.advanceToFinal());
+            finalistIds.add(updated.getId().toString());
+            if (updated.isBot()) {
+                participantRepository.update(GameParticipantQuery.byId(updated.getId()), GameParticipantPatch.markRound2Ready());
+                autoReadyCount++;
+            }
+        }
+
+        notifierPort.publishGameEvent(roomId, Map.of(
+                "type", "FINALISTS_ANNOUNCED",
+                "finalistIds", finalistIds,
+                "winCriteria", "DIRECT"
+        ));
+
+        if (autoReadyCount == participants.size()) {
+            startRound(roomId, RoundConstants.ROUND_2);
+        } else {
+            gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.status(GameRoomStatus.WAITING_FINALISTS_READY));
+            schedulerPort.scheduleFinalistsReadyTimeout(roomId);
+        }
+    }
+
     private void advanceToFinal(UUID roomId, List<ParticipantRoundEntry> sortedEntries, String winCriteria) {
         List<String> finalistIds = new ArrayList<>();
         List<GameParticipant> eliminated = new ArrayList<>();
@@ -386,7 +424,7 @@ public class RoundLifecycleService {
         }
 
         for (GameParticipant p : eliminated) {
-            gameEventPort.publishBalanceRelease(p.getUserId(), p.getReservedPoints(), roomId);
+            gameEventPort.publishBalanceDeductReserved(p.getUserId(), p.getReservedPoints(), roomId);
         }
     }
 }

@@ -84,10 +84,10 @@ public class PrizeServiceImpl implements PrizeService {
         BigDecimal realPlayersRevenue = config.getEntryFeeAmount()
                 .multiply(BigDecimal.valueOf(realPlayersCount));
 
-        RoundResult round1 = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, 1));
-        List<ParticipantRoundEntry> round1Entries = entryRepository.list(
-                ParticipantRoundEntryQuery.byRoundResult(round1.getId()));
-        long boostCountR1 = round1Entries.stream().filter(ParticipantRoundEntry::isBoostPurchased).count();
+        long boostCountR1 = roundResultRepository.find(RoundResultQuery.byRoomAndRound(roomId, 1))
+                .map(r1 -> entryRepository.list(ParticipantRoundEntryQuery.byRoundResult(r1.getId()))
+                        .stream().filter(ParticipantRoundEntry::isBoostPurchased).count())
+                .orElse(0L);
         long boostCountR2 = entries.stream().filter(ParticipantRoundEntry::isBoostPurchased).count();
         int boostUsedCount = (int) (boostCountR1 + boostCountR2);
         BigDecimal boostRevenue = config.getBoostCostAmount().multiply(BigDecimal.valueOf(boostUsedCount));
@@ -122,11 +122,11 @@ public class PrizeServiceImpl implements PrizeService {
 
         log.info("Room {} finished. Winner: {}, prize: {}", roomId, winner.getId(), prizeAwarded);
 
-        // Release reserved entry fee for non-winner finalists, award prize to winner —
+        // Deduct reserved entry fee from all finalists, award prize to winner —
         // written to outbox atomically with room state update, delivered via Kafka
         for (GameParticipant finalist : finalists) {
             if (finalist.isRealPlayer() && !finalist.getId().equals(winner.getId())) {
-                gameEventPort.publishBalanceRelease(finalist.getUserId(), finalist.getReservedPoints(), roomId);
+                gameEventPort.publishBalanceDeductReserved(finalist.getUserId(), finalist.getReservedPoints(), roomId);
             }
         }
 
