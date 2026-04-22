@@ -220,12 +220,12 @@ public class GameRoomController {
     }
 
     @Operation(summary = "Следующая игра",
-            description = "Возвращает до 3 рекомендаций после завершения игры: SAME (аналогичная), SAFER (дешевле), RISKIER (дороже).")
+            description = "Возвращает до 3 рекомендаций после завершения игры: SAME (аналогичная), SAFER (дешевле), RISKIER (дороже). Все варианты в пределах текущего баланса пользователя.")
     @GetMapping("/{roomId}/next-game")
     public List<GameRoomDto.NextGameOption> nextGame(@PathVariable UUID roomId,
                                                      HttpServletRequest httpRequest) {
-        requireAuth(httpRequest);
-        List<NextGameOption> options = gameRoomService.nextGame(roomId);
+        UUID userId = requireAuth(httpRequest);
+        List<NextGameOption> options = gameRoomService.nextGame(roomId, userId);
         return options.stream()
                 .map(o -> new GameRoomDto.NextGameOption(o.type(), toResponse(o.room())))
                 .toList();
@@ -233,6 +233,10 @@ public class GameRoomController {
 
     private GameRoomDto.GameRoomResponse toResponse(GameRoomDetails details) {
         Instant waitTimerExpiresAt = details.room().getWaitTimerExpiresAt();
+        List<GameRoomDto.RoomParticipantPreview> participants = details.participants().stream()
+                .filter(p -> !p.isBot())
+                .map(p -> new GameRoomDto.RoomParticipantPreview(p.getDisplayName()))
+                .toList();
         return new GameRoomDto.GameRoomResponse(
                 details.room().getId(),
                 details.room().getStatus(),
@@ -249,7 +253,8 @@ public class GameRoomController {
                         details.config().getScheduledStartAt(),
                         details.config().getRepeatInterval()
                 ),
-                waitTimerExpiresAt != null ? waitTimerExpiresAt.toEpochMilli() : null
+                waitTimerExpiresAt != null ? waitTimerExpiresAt.toEpochMilli() : null,
+                participants
         );
     }
 

@@ -41,6 +41,8 @@ public class GameRoomDto {
             RepeatInterval repeatInterval
     ) {}
 
+    public record RoomParticipantPreview(String displayName) {}
+
     public record GameRoomResponse(
             UUID id,
             GameRoomStatus status,
@@ -49,7 +51,9 @@ public class GameRoomDto {
             Instant createdAt,
             ConfigResponse config,
             @Schema(description = "Unix-миллисекунды окончания таймера ожидания. Null если таймер не активен", nullable = true)
-            Long waitExpiresAt
+            Long waitExpiresAt,
+            @Schema(description = "Реальные игроки, находящиеся в комнате прямо сейчас")
+            List<RoomParticipantPreview> participants
     ) {}
 
     public record JoinRoomResponse(

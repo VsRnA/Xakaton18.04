@@ -63,12 +63,12 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum by (application, le) (rate(http_server_requests_seconds_bucket{application=~\"$app\", status!~\"5..\"}[5m]))) * 1000",
+          "expr": "histogram_quantile(0.99, sum by (application, le) (rate(http_server_requests_seconds_bucket{application=~\"$app\", outcome!=\"SERVER_ERROR\"}[5m]))) * 1000",
           "legendFormat": "{{application}} P99",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.50, sum by (application, le) (rate(http_server_requests_seconds_bucket{application=~\"$app\", status!~\"5..\"}[5m]))) * 1000",
+          "expr": "histogram_quantile(0.50, sum by (application, le) (rate(http_server_requests_seconds_bucket{application=~\"$app\", outcome!=\"SERVER_ERROR\"}[5m]))) * 1000",
           "legendFormat": "{{application}} P50",
           "refId": "B"
         }
@@ -93,7 +93,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum by (application, uri) (rate(http_server_requests_seconds_count{application=~\"$app\", status=~\"5..\"}[1m]))",
+          "expr": "sum by (application, uri) (rate(http_server_requests_seconds_count{application=~\"$app\", outcome=\"SERVER_ERROR\"}[1m])) or on(application) (sum by (application) (rate(http_server_requests_seconds_count{application=~\"$app\"}[1m])) * 0)",
           "legendFormat": "{{application}} {{uri}}",
           "refId": "A"
         }
@@ -225,7 +225,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum by (application) (rate(spring_kafka_producer_record_send_total{application=~\"$app\"}[1m]))",
+          "expr": "sum by (application) (rate(kafka_producer_record_send_total{application=~\"$app\"}[1m]))",
           "legendFormat": "{{application}} send/s",
           "refId": "A"
         }

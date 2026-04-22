@@ -98,7 +98,7 @@ public class GameRoomServiceImpl implements GameRoomService {
                     Map.of("entryFee", command.entryFeeAmount(), "maxPlayers", command.maxPlayers()));
         }
 
-        return new GameRoomDetails(createdRoom, config);
+        return new GameRoomDetails(createdRoom, config, List.of());
     }
 
     @Override
@@ -214,7 +214,7 @@ public class GameRoomServiceImpl implements GameRoomService {
         }
         notifierPort.publishRoomUpdate(roomId, roomUpdate);
 
-        return new GameRoomDetails(room, config);
+        return new GameRoomDetails(room, config, List.of());
     }
 
     @Override
@@ -272,7 +272,8 @@ public class GameRoomServiceImpl implements GameRoomService {
     public GameRoomDetails getRoom(UUID roomId) {
         GameRoom room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
         GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
-        return new GameRoomDetails(room, config);
+        List<GameParticipant> participants = participantRepository.list(GameParticipantQuery.byRoom(roomId));
+        return new GameRoomDetails(room, config, participants);
     }
 
     @Override
@@ -306,36 +307,41 @@ public class GameRoomServiceImpl implements GameRoomService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<NextGameOption> nextGame(UUID finishedRoomId) {
+    public List<NextGameOption> nextGame(UUID finishedRoomId, UUID userId) {
         GameRoomDetails finished = getRoom(finishedRoomId);
         GameRoomConfig cfg = finished.config();
         BigDecimal fee = cfg.getEntryFeeAmount();
         int players = cfg.getMaxPlayers();
+        BigDecimal balance = balancePort.getAvailableBalance(userId);
 
         List<NextGameOption> options = new ArrayList<>();
 
-        // SAME — та же конфигурация
-        listRooms(GameRoomQuery.filtered(
-                GameRoomStatus.WAITING,
-                fee.multiply(BigDecimal.valueOf(0.9)),
-                fee.multiply(BigDecimal.valueOf(1.1)),
-                players, true, 0, 1))
-                .stream().findFirst()
-                .ifPresent(r -> options.add(new NextGameOption("SAME", r)));
+        if (balance.compareTo(fee.multiply(BigDecimal.valueOf(0.9))) >= 0) {
+            BigDecimal sameMax = fee.multiply(BigDecimal.valueOf(1.1)).min(balance);
+            listRooms(GameRoomQuery.filtered(
+                    GameRoomStatus.WAITING,
+                    fee.multiply(BigDecimal.valueOf(0.9)),
+                    sameMax,
+                    players, true, 0, 1))
+                    .stream().findFirst()
+                    .ifPresent(r -> options.add(new NextGameOption("SAME", r)));
+        }
 
-        // SAFER — вдвое дешевле или на меньше игроков
-        BigDecimal saferFee = fee.divide(BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP);
-        listRooms(GameRoomQuery.filtered(
-                GameRoomStatus.WAITING, BigDecimal.ZERO, saferFee, null, true, 0, 1))
-                .stream().findFirst()
-                .ifPresent(r -> options.add(new NextGameOption("SAFER", r)));
+        BigDecimal saferFeeMax = fee.divide(BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP).min(balance);
+        if (saferFeeMax.compareTo(BigDecimal.ZERO) > 0) {
+            listRooms(GameRoomQuery.filtered(
+                    GameRoomStatus.WAITING, BigDecimal.ZERO, saferFeeMax, null, true, 0, 1))
+                    .stream().findFirst()
+                    .ifPresent(r -> options.add(new NextGameOption("SAFER", r)));
+        }
 
-        // RISKIER — вдвое дороже
         BigDecimal riskierFeeMin = fee.multiply(BigDecimal.valueOf(1.5));
-        listRooms(GameRoomQuery.filtered(
-                GameRoomStatus.WAITING, riskierFeeMin, null, null, true, 0, 1))
-                .stream().findFirst()
-                .ifPresent(r -> options.add(new NextGameOption("RISKIER", r)));
+        if (balance.compareTo(riskierFeeMin) >= 0) {
+            listRooms(GameRoomQuery.filtered(
+                    GameRoomStatus.WAITING, riskierFeeMin, balance, null, true, 0, 1))
+                    .stream().findFirst()
+                    .ifPresent(r -> options.add(new NextGameOption("RISKIER", r)));
+        }
 
         return options;
     }
@@ -374,9 +380,15 @@ public class GameRoomServiceImpl implements GameRoomService {
         List<GameRoomConfig> configs = gameRoomConfigRepository.listByRoomIds(roomIds);
         Map<UUID, GameRoomConfig> configByRoomId = new HashMap<>();
         configs.forEach(config -> configByRoomId.put(config.getGameRoomId(), config));
+        Map<UUID, List<GameParticipant>> participantsByRoomId = new HashMap<>();
+        participantRepository.listByRoomIds(roomIds)
+                .forEach(p -> participantsByRoomId.computeIfAbsent(p.getGameRoomId(), k -> new ArrayList<>()).add(p));
         return rooms.stream()
                 .filter(room -> configByRoomId.containsKey(room.getId()))
-                .map(room -> new GameRoomDetails(room, configByRoomId.get(room.getId())))
+                .map(room -> new GameRoomDetails(
+                        room,
+                        configByRoomId.get(room.getId()),
+                        participantsByRoomId.getOrDefault(room.getId(), List.of())))
                 .toList();
     }
 

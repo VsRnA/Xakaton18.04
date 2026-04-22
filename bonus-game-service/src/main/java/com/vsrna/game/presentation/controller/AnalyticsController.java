@@ -2,9 +2,9 @@ package com.vsrna.game.presentation.controller;
 
 import com.vsrna.game.application.analytics.AnalyticsService;
 import com.vsrna.game.application.analytics.GameAnalyticsSummary;
+import com.vsrna.game.application.analytics.GameHistoryEntry;
 import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.exception.GameErrorMessages;
-import com.vsrna.game.domain.history.GameHistory;
 import com.vsrna.game.presentation.dto.analytics.AnalyticsDto;
 import com.vsrna.game.presentation.filter.AuthTokenFilter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -63,14 +63,14 @@ public class AnalyticsController {
 
         requireAdminAuth(httpRequest);
 
-        List<GameHistory> games = analyticsService.listGames(from, to, page, size);
+        List<GameHistoryEntry> games = analyticsService.listGames(from, to, page, size);
         List<AnalyticsDto.AdminGameRecord> records = games.stream()
                 .map(g -> new AnalyticsDto.AdminGameRecord(
-                        g.getGameRoomId(), g.getCompletedAt(), g.getWinnerUserId(),
-                        g.isWinnerIsBot(), g.getEntryFeeAmount(), g.getRealPlayersRevenue(),
-                        g.getPrizeAwarded(), g.getSystemBalance(), g.getWinCriteria(),
-                        g.getRealPlayersCount(), g.getBotCount(),
-                        g.isBoostAvailable(), g.getBoostUsedCount(), g.getBoostRevenue()))
+                        g.gameRoomId(), g.completedAt(), g.winnerUserId(),
+                        g.winnerIsBot(), g.entryFeeAmount(), g.realPlayersRevenue(),
+                        g.prizeAwarded(), g.systemBalance(), g.winCriteria(),
+                        g.realPlayersCount(), g.botCount(),
+                        g.boostAvailable(), g.boostUsedCount(), g.boostRevenue()))
                 .toList();
         return ResponseEntity.ok(new AnalyticsDto.AdminGamesResponse(records, records.size()));
     }

@@ -13,7 +13,7 @@ import com.vsrna.game.domain.gameroom.GameRoomPatch;
 import com.vsrna.game.domain.gameroom.GameRoomQuery;
 import com.vsrna.game.domain.gameroom.GameRoomRepository;
 import com.vsrna.game.domain.gameroom.GameRoomStatus;
-import com.vsrna.game.domain.history.GameHistoryRepository;
+import com.vsrna.game.domain.history.GameHistoryAnalyticsRepository;
 import com.vsrna.game.domain.participant.GameParticipant;
 import com.vsrna.game.domain.participant.GameParticipantPatch;
 import com.vsrna.game.domain.participant.GameParticipantQuery;
@@ -66,7 +66,7 @@ public class RoundLifecycleService {
     private final GameSchedulerPort schedulerPort;
     private final GameNotifierPort notifierPort;
     private final PrizeService prizeService;
-    private final GameHistoryRepository gameHistoryRepository;
+    private final GameHistoryAnalyticsRepository gameHistoryAnalyticsRepository;
     private final BotService botService;
     private final GameEventPort gameEventPort;
     private final GameEventLogService gameEventLogService;
@@ -167,7 +167,7 @@ public class RoundLifecycleService {
         List<Barrel> barrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
         Map<UUID, BigDecimal> barrelWeights = buildBarrelWeightMap(barrels);
 
-        boolean protectionMode = gameHistoryRepository.getCumulativeSystemBalance()
+        boolean protectionMode = gameHistoryAnalyticsRepository.getCumulativeSystemBalance()
                 .compareTo(BigDecimal.ZERO) < 0;
         botService.submitBotSelections(roomId, roundNumber, protectionMode, barrelWeights);
 

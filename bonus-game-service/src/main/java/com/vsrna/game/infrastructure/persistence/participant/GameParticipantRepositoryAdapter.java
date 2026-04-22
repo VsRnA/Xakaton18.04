@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
@@ -34,6 +35,13 @@ public class GameParticipantRepositoryAdapter implements GameParticipantReposito
     @Override
     public List<GameParticipant> list(GameParticipantQuery query) {
         return jpa.findByQuery(query.id(), query.gameRoomId(), query.userId(), query.status())
+                .stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<GameParticipant> listByRoomIds(List<UUID> roomIds) {
+        if (roomIds.isEmpty()) return List.of();
+        return jpa.findByGameRoomIdInOrderByJoinedAtAsc(roomIds)
                 .stream().map(this::toDomain).toList();
     }
 

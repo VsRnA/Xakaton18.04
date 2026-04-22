@@ -17,7 +17,7 @@ public interface GameRoomService {
     List<GameParticipant> listParticipants(UUID roomId);
     GameRoomDetails suggestRoom(BigDecimal targetEntryFee, Integer targetMaxPlayers);
     List<GameRoomDetails> affordableRooms(UUID userId, int page, int size);
-    List<NextGameOption> nextGame(UUID finishedRoomId);
+    List<NextGameOption> nextGame(UUID finishedRoomId, UUID userId);
     void cancelRoom(UUID roomId, UUID adminUserId);
     void openScheduledRoom(UUID roomId);
     ConfigEvaluationResult evaluateConfig(CreateGameRoomCommand command);

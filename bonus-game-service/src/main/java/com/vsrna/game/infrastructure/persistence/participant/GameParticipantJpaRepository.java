@@ -27,4 +27,6 @@ public interface GameParticipantJpaRepository extends JpaRepository<GameParticip
 
     @Query("SELECT COUNT(participant) FROM GameParticipantJpa participant WHERE participant.gameRoomId = :gameRoomId")
     int countByGameRoomId(@Param("gameRoomId") UUID gameRoomId);
+
+    List<GameParticipantJpa> findByGameRoomIdInOrderByJoinedAtAsc(List<UUID> roomIds);
 }

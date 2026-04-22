@@ -24,7 +24,7 @@ public class AnalyticsDto {
             BigDecimal totalRetained,
             double retentionRatePercent,
             BigDecimal cumulativeSystemBalance,
-            String systemBalanceStatus       // "POSITIVE" | "NEGATIVE"
+            String systemBalanceStatus
     ) {}
 
     public record RoomsBlock(
@@ -50,19 +50,22 @@ public class AnalyticsDto {
             PlayersBlock players
     ) {
         public static AnalyticsSummaryResponse from(GameAnalyticsSummary s) {
-            String balanceStatus = s.cumulativeSystemBalance().compareTo(BigDecimal.ZERO) >= 0
+            String balanceStatus = s.economics().cumulativeSystemBalance().compareTo(BigDecimal.ZERO) >= 0
                     ? "POSITIVE" : "NEGATIVE";
             return new AnalyticsSummaryResponse(
                     s.from(), s.to(),
                     new EconomicsBlock(
-                            s.totalRealRevenue(), s.totalPrizesAwarded(), s.totalBoostRevenue(),
-                            s.totalRetained(), s.retentionRatePercent(),
-                            s.cumulativeSystemBalance(), balanceStatus),
+                            s.economics().totalRealRevenue(), s.economics().totalPrizesAwarded(),
+                            s.economics().totalBoostRevenue(), s.economics().totalRetained(),
+                            s.economics().retentionRatePercent(), s.economics().cumulativeSystemBalance(),
+                            balanceStatus),
                     new RoomsBlock(
-                            s.totalGames(), s.botWins(), s.realPlayerWins(),
-                            s.botWinRatePercent(), s.avgRealPlayersPerRoom(), s.avgBotFillRate()),
+                            s.rooms().totalGames(), s.rooms().botWins(), s.rooms().realPlayerWins(),
+                            s.rooms().botWinRatePercent(), s.rooms().avgRealPlayersPerRoom(),
+                            s.rooms().avgBotFillRate()),
                     new PlayersBlock(
-                            s.uniqueWinners(), s.boostUsageRatePercent(), s.winnerBoostRatePercent())
+                            s.players().uniqueWinners(), s.players().boostUsageRatePercent(),
+                            s.players().winnerBoostRatePercent())
             );
         }
     }

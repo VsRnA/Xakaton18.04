@@ -5,6 +5,12 @@ import java.util.UUID;
 
 public record GameHistoryQuery(UUID id, UUID gameRoomId, UUID winnerUserId, Instant from, Instant to, int page, int size) {
 
+    private static final int UNBOUNDED_SIZE = Integer.MAX_VALUE;
+
+    public boolean isUnbounded() {
+        return size == UNBOUNDED_SIZE;
+    }
+
     public static GameHistoryQuery byId(UUID id) {
         return new GameHistoryQuery(id, null, null, null, null, 0, 1);
     }
@@ -13,8 +19,8 @@ public record GameHistoryQuery(UUID id, UUID gameRoomId, UUID winnerUserId, Inst
         return new GameHistoryQuery(null, gameRoomId, null, null, null, 0, 1);
     }
 
-    public static GameHistoryQuery byPeriod(Instant from, Instant to) {
-        return new GameHistoryQuery(null, null, null, from, to, 0, Integer.MAX_VALUE);
+    public static GameHistoryQuery allByPeriod(Instant from, Instant to) {
+        return new GameHistoryQuery(null, null, null, from, to, 0, UNBOUNDED_SIZE);
     }
 
     public static GameHistoryQuery byPeriod(Instant from, Instant to, int page, int size) {

@@ -95,11 +95,22 @@ public class PrizeServiceImpl implements PrizeService {
         BigDecimal boostRevenue = config.getBoostCostAmount().multiply(BigDecimal.valueOf(boostUsedCount));
         boolean winnerUsedBoost = winnerEntry.isBoostPurchased();
 
-        GameHistory history = new GameHistory(roomId, winnerUserId, winner.isBot(),
-                prizeAwarded, systemRevenue, winCriteria,
-                realPlayersCount, botCount, realPlayersRevenue,
-                boostRevenue, boostUsedCount, winnerUsedBoost,
-                config.getEntryFeeAmount(), config.isBoostEnabled());
+        GameHistory history = GameHistory.builder()
+                .gameRoomId(roomId)
+                .winnerUserId(winnerUserId)
+                .winnerIsBot(winner.isBot())
+                .prizeAwarded(prizeAwarded)
+                .systemRevenue(systemRevenue)
+                .winCriteria(winCriteria)
+                .realPlayersCount(realPlayersCount)
+                .botCount(botCount)
+                .realPlayersRevenue(realPlayersRevenue)
+                .boostRevenue(boostRevenue)
+                .boostUsedCount(boostUsedCount)
+                .winnerUsedBoost(winnerUsedBoost)
+                .entryFeeAmount(config.getEntryFeeAmount())
+                .boostAvailable(config.isBoostEnabled())
+                .build();
         gameHistoryRepository.create(history);
 
         gameRoomRepository.update(GameRoomQuery.byId(roomId), GameRoomPatch.finished(Instant.now()));

@@ -1,7 +1,10 @@
 package com.vsrna.game.infrastructure.persistence.history;
 
 import com.vsrna.game.domain.exception.ApiException;
-import com.vsrna.game.domain.history.*;
+import com.vsrna.game.domain.history.GameHistory;
+import com.vsrna.game.domain.history.GameHistoryAnalyticsRepository;
+import com.vsrna.game.domain.history.GameHistoryQuery;
+import com.vsrna.game.domain.history.GameHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -14,7 +17,7 @@ import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
-public class GameHistoryRepositoryAdapter implements GameHistoryRepository {
+public class GameHistoryRepositoryAdapter implements GameHistoryRepository, GameHistoryAnalyticsRepository {
 
     private final GameHistoryJpaRepository jpa;
 
@@ -43,7 +46,7 @@ public class GameHistoryRepositoryAdapter implements GameHistoryRepository {
 
     @Override
     public List<GameHistory> list(GameHistoryQuery query) {
-        Pageable pageable = query.size() == Integer.MAX_VALUE
+        Pageable pageable = query.isUnbounded()
                 ? Pageable.unpaged()
                 : PageRequest.of(Math.max(query.page(), 0), Math.max(query.size(), 1));
         return jpa.findByQuery(
@@ -58,47 +61,47 @@ public class GameHistoryRepositoryAdapter implements GameHistoryRepository {
         return Objects.requireNonNullElse(jpa.getSystemBalance(), BigDecimal.ZERO);
     }
 
-    private GameHistory toDomain(GameHistoryJpa jpaEntity) {
-        GameHistory history = new GameHistory();
-        history.setId(jpaEntity.getId());
-        history.setGameRoomId(jpaEntity.getGameRoomId());
-        history.setWinnerUserId(jpaEntity.getWinnerUserId());
-        history.setWinnerIsBot(jpaEntity.isWinnerIsBot());
-        history.setPrizeAwarded(jpaEntity.getPrizeAwarded());
-        history.setSystemRevenue(jpaEntity.getSystemRevenue());
-        history.setCompletedAt(jpaEntity.getCompletedAt());
-        history.setWinCriteria(jpaEntity.getWinCriteria());
-        history.setSummaryJson(jpaEntity.getSummaryJson());
-        history.setRealPlayersCount(jpaEntity.getRealPlayersCount());
-        history.setBotCount(jpaEntity.getBotCount());
-        history.setRealPlayersRevenue(jpaEntity.getRealPlayersRevenue());
-        history.setBoostRevenue(jpaEntity.getBoostRevenue());
-        history.setBoostUsedCount(jpaEntity.getBoostUsedCount());
-        history.setWinnerUsedBoost(jpaEntity.isWinnerUsedBoost());
-        history.setEntryFeeAmount(jpaEntity.getEntryFeeAmount());
-        history.setBoostAvailable(jpaEntity.isBoostAvailable());
-        return history;
+    private GameHistory toDomain(GameHistoryJpa e) {
+        return GameHistory.builder()
+                .id(e.getId())
+                .gameRoomId(e.getGameRoomId())
+                .winnerUserId(e.getWinnerUserId())
+                .winnerIsBot(e.isWinnerIsBot())
+                .prizeAwarded(e.getPrizeAwarded())
+                .systemRevenue(e.getSystemRevenue())
+                .completedAt(e.getCompletedAt())
+                .winCriteria(e.getWinCriteria())
+                .summaryJson(e.getSummaryJson())
+                .realPlayersCount(e.getRealPlayersCount())
+                .botCount(e.getBotCount())
+                .realPlayersRevenue(e.getRealPlayersRevenue())
+                .boostRevenue(e.getBoostRevenue())
+                .boostUsedCount(e.getBoostUsedCount())
+                .winnerUsedBoost(e.isWinnerUsedBoost())
+                .entryFeeAmount(e.getEntryFeeAmount())
+                .boostAvailable(e.isBoostAvailable())
+                .build();
     }
 
-    private GameHistoryJpa toJpa(GameHistory history) {
-        GameHistoryJpa jpaEntity = new GameHistoryJpa();
-        jpaEntity.setId(history.getId());
-        jpaEntity.setGameRoomId(history.getGameRoomId());
-        jpaEntity.setWinnerUserId(history.getWinnerUserId());
-        jpaEntity.setWinnerIsBot(history.isWinnerIsBot());
-        jpaEntity.setPrizeAwarded(history.getPrizeAwarded());
-        jpaEntity.setSystemRevenue(history.getSystemRevenue());
-        jpaEntity.setCompletedAt(history.getCompletedAt());
-        jpaEntity.setWinCriteria(history.getWinCriteria());
-        jpaEntity.setSummaryJson(history.getSummaryJson());
-        jpaEntity.setRealPlayersCount(history.getRealPlayersCount());
-        jpaEntity.setBotCount(history.getBotCount());
-        jpaEntity.setRealPlayersRevenue(history.getRealPlayersRevenue());
-        jpaEntity.setBoostRevenue(history.getBoostRevenue());
-        jpaEntity.setBoostUsedCount(history.getBoostUsedCount());
-        jpaEntity.setWinnerUsedBoost(history.isWinnerUsedBoost());
-        jpaEntity.setEntryFeeAmount(history.getEntryFeeAmount());
-        jpaEntity.setBoostAvailable(history.isBoostAvailable());
-        return jpaEntity;
+    private GameHistoryJpa toJpa(GameHistory h) {
+        GameHistoryJpa e = new GameHistoryJpa();
+        e.setId(h.getId());
+        e.setGameRoomId(h.getGameRoomId());
+        e.setWinnerUserId(h.getWinnerUserId());
+        e.setWinnerIsBot(h.isWinnerIsBot());
+        e.setPrizeAwarded(h.getPrizeAwarded());
+        e.setSystemRevenue(h.getSystemRevenue());
+        e.setCompletedAt(h.getCompletedAt());
+        e.setWinCriteria(h.getWinCriteria());
+        e.setSummaryJson(h.getSummaryJson());
+        e.setRealPlayersCount(h.getRealPlayersCount());
+        e.setBotCount(h.getBotCount());
+        e.setRealPlayersRevenue(h.getRealPlayersRevenue());
+        e.setBoostRevenue(h.getBoostRevenue());
+        e.setBoostUsedCount(h.getBoostUsedCount());
+        e.setWinnerUsedBoost(h.isWinnerUsedBoost());
+        e.setEntryFeeAmount(h.getEntryFeeAmount());
+        e.setBoostAvailable(h.isBoostAvailable());
+        return e;
     }
 }
