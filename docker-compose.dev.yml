@@ -108,6 +108,15 @@ services:
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
 
+  promtail:
+    image: grafana/promtail:3.0.0
+    volumes:
+      - ./monitoring/promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
   grafana:
     image: grafana/grafana:10.4.2
     ports:

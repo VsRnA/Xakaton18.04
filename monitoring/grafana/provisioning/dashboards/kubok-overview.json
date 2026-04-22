@@ -2,7 +2,7 @@
   "title": "Kubok — Service Overview",
   "uid": "kubok-overview",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "tags": ["kubok", "spring-boot"],
   "timezone": "browser",
   "time": { "from": "now-30m", "to": "now" },
@@ -225,7 +225,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum by (application) (rate(kafka_producer_record_send_total{application=~\"$app\"}[1m]))",
+          "expr": "sum by (application) (rate(spring_kafka_producer_record_send_total{application=~\"$app\"}[1m]))",
           "legendFormat": "{{application}} send/s",
           "refId": "A"
         }
@@ -243,14 +243,155 @@
       }
     },
     {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Kafka — Консьюмер (записей/сек и lag)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (application) (rate(kafka_consumer_fetch_manager_records_consumed_total{application=~\"$app\"}[1m]))",
+          "legendFormat": "{{application}} consumed/s",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (application, topic) (kafka_consumer_records_lag{application=~\"$app\"})",
+          "legendFormat": "{{application}} lag ({{topic}})",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byFrameRefID", "options": "B" },
+            "properties": [
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "unit", "value": "short" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "JVM — GC паузы (мс/сек)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (application, cause) (rate(jvm_gc_pause_seconds_sum{application=~\"$app\"}[1m])) * 1000",
+          "legendFormat": "{{application}} ({{cause}})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "CPU — Процесс / Система",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "process_cpu_usage{application=~\"$app\"}",
+          "legendFormat": "{{application}} process",
+          "refId": "A"
+        },
+        {
+          "expr": "system_cpu_usage{application=~\"$app\"}",
+          "legendFormat": "{{application}} system",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.7 },
+              { "color": "red", "value": 0.9 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "JVM — Non-Heap / Metaspace",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{application=~\"$app\", area=\"nonheap\"}",
+          "legendFormat": "{{application}} used",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_memory_committed_bytes{application=~\"$app\", area=\"nonheap\"}",
+          "legendFormat": "{{application}} committed",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
       "id": 8,
       "type": "logs",
       "title": "Логи сервисов (Loki)",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 32 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 48 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "{app=~\"$app\"}",
+          "expr": "{application=~\"$app\"}",
           "refId": "A"
         }
       ],
