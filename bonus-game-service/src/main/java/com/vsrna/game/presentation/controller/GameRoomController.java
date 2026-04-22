@@ -83,7 +83,10 @@ public class GameRoomController {
     }
 
     @Operation(summary = "Список комнат с фильтрами",
-            description = "Фильтрация по цене входа, числу мест, наличию свободных мест. При наличии фильтров сортировка по заполненности (убывание).")
+            description = """
+                    Фильтрация по цене входа, числу мест, цене буста, наличию свободных мест.
+                    При наличии фильтров сортировка по заполненности (убывание).
+                    """)
     @GetMapping
     public List<GameRoomDto.GameRoomResponse> listRooms(
             @RequestParam(required = false) GameRoomStatus status,
@@ -93,10 +96,25 @@ public class GameRoomController {
             @RequestParam(required = false) BigDecimal entryFeeMax,
             @RequestParam(required = false) Integer maxPlayers,
             @RequestParam(required = false) Boolean onlyWithSlots,
+            @RequestParam(required = false) BigDecimal boostCostMin,
+            @RequestParam(required = false) BigDecimal boostCostMax,
             HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
         return gameRoomService.listRooms(
-                        GameRoomQuery.filtered(status, entryFeeMin, entryFeeMax, maxPlayers, onlyWithSlots, page, size))
+                        GameRoomQuery.filteredFull(status, entryFeeMin, entryFeeMax, maxPlayers, onlyWithSlots,
+                                boostCostMin, boostCostMax, page, size))
+                .stream().map(this::toResponse).toList();
+    }
+
+    @Operation(summary = "Комнаты по балансу пользователя",
+            description = "Возвращает WAITING-комнаты, цена входа которых не превышает текущий доступный баланс пользователя. Сортировка по заполненности.")
+    @GetMapping("/affordable")
+    public List<GameRoomDto.GameRoomResponse> affordableRooms(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest httpRequest) {
+        UUID userId = requireAuth(httpRequest);
+        return gameRoomService.affordableRooms(userId, page, size)
                 .stream().map(this::toResponse).toList();
     }
 

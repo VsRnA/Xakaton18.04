@@ -1,11 +1,13 @@
 package com.vsrna.game.presentation.controller;
 
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.round.GameHistoryDetails;
 import com.vsrna.game.application.round.RoundResultDetails;
 import com.vsrna.game.application.round.RoundService;
 import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.history.GameHistory;
+import com.vsrna.game.presentation.dto.gameevent.GameEventDto;
 import com.vsrna.game.presentation.dto.round.RoundDto;
 import com.vsrna.game.presentation.filter.AuthTokenFilter;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +30,7 @@ import java.util.UUID;
 public class RoundController {
 
     private final RoundService roundService;
+    private final GameEventLogService gameEventLogService;
 
     @Operation(
             summary = "Получить перемешанные бочки раунда",
@@ -182,6 +185,25 @@ public class RoundController {
                 h.getWinCriteria(), h.getRealPlayersCount(), h.getBotCount(),
                 h.isWinnerUsedBoost(), participants
         );
+    }
+
+    @Operation(
+            summary = "Лог событий игры",
+            description = """
+                    Возвращает хронологический список событий, произошедших в комнате:
+                    `ROOM_CREATED`, `ROOM_SCHEDULED`, `PLAYER_JOINED`, `ROOM_STARTED`,
+                    `ROUND_STARTED`, `ROUND_COMPLETED`, `GAME_FINISHED`, `ROOM_CANCELLED`.
+
+                    Поле `details` содержит дополнительный контекст в формате `ключ=значение`.
+                    """)
+    @GetMapping("/events")
+    public List<GameEventDto.GameEventResponse> getGameEvents(@PathVariable UUID roomId,
+                                                               HttpServletRequest httpRequest) {
+        requireAuth(httpRequest);
+        return gameEventLogService.getEvents(roomId).stream()
+                .map(e -> new GameEventDto.GameEventResponse(e.getId(), e.getRoomId(),
+                        e.getEventType(), e.getDetails(), e.getOccurredAt()))
+                .toList();
     }
 
     private UUID requireAuth(HttpServletRequest request) {

@@ -1,5 +1,6 @@
 package com.vsrna.game.application.prize;
 
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.round.RoundScoringUtils;
@@ -36,6 +37,7 @@ public class PrizeServiceImpl implements PrizeService {
     private final GameHistoryRepository gameHistoryRepository;
     private final GameEventPort gameEventPort;
     private final GameNotifierPort notifierPort;
+    private final GameEventLogService gameEventLogService;
 
     @Override
     @Transactional
@@ -119,6 +121,9 @@ public class PrizeServiceImpl implements PrizeService {
 
         gameEventPort.publishGameFinished(roomId, winnerUserId, winner.isBot(),
                 prizePool, prizeAwarded, systemRevenue, winCriteria);
+
+        gameEventLogService.log(roomId, "GAME_FINISHED",
+                "winnerId=" + winner.getId() + " prize=" + prizeAwarded + " criteria=" + winCriteria);
 
         log.info("Room {} finished. Winner: {}, prize: {}", roomId, winner.getId(), prizeAwarded);
 

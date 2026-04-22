@@ -28,6 +28,8 @@ public interface GameRoomJpaRepository extends JpaRepository<GameRoomJpa, UUID> 
               AND (:entryFeeMax IS NULL OR c.entryFeeAmount <= :entryFeeMax)
               AND (:maxPlayersFilter IS NULL OR c.maxPlayers = :maxPlayersFilter)
               AND (:onlyWithSlots = false OR r.currentPlayerCount < c.maxPlayers)
+              AND (:boostCostMin IS NULL OR c.boostCostAmount >= :boostCostMin)
+              AND (:boostCostMax IS NULL OR c.boostCostAmount <= :boostCostMax)
             ORDER BY r.currentPlayerCount DESC
             """)
     List<GameRoomJpa> findFiltered(
@@ -36,5 +38,7 @@ public interface GameRoomJpaRepository extends JpaRepository<GameRoomJpa, UUID> 
             @Param("entryFeeMax") BigDecimal entryFeeMax,
             @Param("maxPlayersFilter") Integer maxPlayersFilter,
             @Param("onlyWithSlots") boolean onlyWithSlots,
+            @Param("boostCostMin") BigDecimal boostCostMin,
+            @Param("boostCostMax") BigDecimal boostCostMax,
             Pageable pageable);
 }

@@ -1,6 +1,7 @@
 package com.vsrna.game.application.round;
 
 import com.vsrna.game.application.bot.BotService;
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.port.GameSchedulerPort;
@@ -68,6 +69,7 @@ public class RoundLifecycleService {
     private final GameHistoryRepository gameHistoryRepository;
     private final BotService botService;
     private final GameEventPort gameEventPort;
+    private final GameEventLogService gameEventLogService;
 
     @Transactional
     public void startRound(UUID roomId, int roundNumber) {
@@ -100,6 +102,7 @@ public class RoundLifecycleService {
                 "seedHash", commitment.seedHash(),
                 "expiresAt", Instant.now().plusSeconds(30).toEpochMilli()
         ));
+        gameEventLogService.log(roomId, "ROUND_STARTED", "round=" + roundNumber);
     }
 
     @Transactional
@@ -194,6 +197,9 @@ public class RoundLifecycleService {
         roundCompletedPayload.put("winCriteria", winCriteria);
         roundCompletedPayload.put("disqualifiedIds", disqualifiedIds);
         notifierPort.publishRoundEvent(roomId, roundCompletedPayload);
+
+        gameEventLogService.log(roomId, "ROUND_COMPLETED", "round=" + roundNumber
+                + " winCriteria=" + winCriteria);
 
         if (roundNumber == RoundConstants.ROUND_1) {
             advanceToFinal(roomId, entries, winCriteria);
@@ -415,6 +421,8 @@ public class RoundLifecycleService {
                 "finalistIds", finalistIds,
                 "winCriteria", winCriteria
         ));
+        gameEventLogService.log(roomId, "FINALISTS_ANNOUNCED",
+                "finalists=" + String.join(",", finalistIds) + " criteria=" + winCriteria);
 
         if (autoReadyCount == finalistCount) {
             startRound(roomId, RoundConstants.ROUND_2);

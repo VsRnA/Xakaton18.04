@@ -51,11 +51,12 @@ public class GameRoomRepositoryAdapter implements GameRoomRepository {
         PageRequest pageable = PageRequest.of(page, size);
 
         boolean hasFilters = query.entryFeeMin() != null || query.entryFeeMax() != null
-                || query.maxPlayersFilter() != null || Boolean.TRUE.equals(query.onlyWithSlots());
+                || query.maxPlayersFilter() != null || Boolean.TRUE.equals(query.onlyWithSlots())
+                || query.boostCostMin() != null || query.boostCostMax() != null;
         if (hasFilters) {
             boolean onlyWithSlots = Boolean.TRUE.equals(query.onlyWithSlots());
             return jpa.findFiltered(query.status(), query.entryFeeMin(), query.entryFeeMax(),
-                    query.maxPlayersFilter(), onlyWithSlots, pageable)
+                    query.maxPlayersFilter(), onlyWithSlots, query.boostCostMin(), query.boostCostMax(), pageable)
                     .stream().map(this::toDomain).toList();
         }
         if (query.status() != null) {

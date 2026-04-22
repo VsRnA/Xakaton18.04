@@ -1,6 +1,7 @@
 package com.vsrna.game.application.gameroom;
 
 import com.vsrna.game.application.bot.BotService;
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
@@ -45,6 +46,7 @@ public class GameRoomServiceImpl implements GameRoomService {
     private final GameNotifierPort notifierPort;
     private final RoundService roundService;
     private final GameRoomConfigValidator configValidator;
+    private final GameEventLogService gameEventLogService;
 
     @Override
     @Transactional
@@ -85,11 +87,15 @@ public class GameRoomServiceImpl implements GameRoomService {
                     "type", "ROOM_SCHEDULED",
                     "roomId", createdRoom.getId().toString()
             ));
+            gameEventLogService.log(createdRoom.getId(), "ROOM_SCHEDULED",
+                    "scheduledAt=" + command.scheduledStartAt());
         } else {
             notifierPort.publishRoomsUpdate(Map.of(
                     "type", "ROOM_CREATED",
                     "roomId", createdRoom.getId().toString()
             ));
+            gameEventLogService.log(createdRoom.getId(), "ROOM_CREATED",
+                    "entryFee=" + command.entryFeeAmount() + " maxPlayers=" + command.maxPlayers());
         }
 
         return new GameRoomDetails(createdRoom, config);
@@ -177,6 +183,7 @@ public class GameRoomServiceImpl implements GameRoomService {
         // Write balance reserve command and notification atomically with participant creation
         gameEventPort.publishBalanceReserve(userId, config.getEntryFeeAmount(), roomId);
         gameEventPort.publishEntryReserved(userId, roomId, config.getEntryFeeAmount());
+        gameEventLogService.log(roomId, "PLAYER_JOINED", "userId=" + userId);
 
         int newCount = room.getCurrentPlayerCount() + 1;
         BigDecimal newPrize = room.getPrizePoolAmount().add(config.getEntryFeeAmount());
@@ -241,6 +248,7 @@ public class GameRoomServiceImpl implements GameRoomService {
                     "type", "ROOM_STARTED",
                     "roomId", roomId.toString()
             ));
+            gameEventLogService.log(roomId, "ROOM_STARTED", "totalPlayers=" + total);
         } else {
             log.warn("fillWithBots: not enough participants ({}) to start room {}", total, roomId);
         }
@@ -265,6 +273,14 @@ public class GameRoomServiceImpl implements GameRoomService {
         GameRoom room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
         GameRoomConfig config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
         return new GameRoomDetails(room, config);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GameRoomDetails> affordableRooms(UUID userId, int page, int size) {
+        BigDecimal balance = balancePort.getAvailableBalance(userId);
+        return listRooms(GameRoomQuery.filtered(
+                GameRoomStatus.WAITING, BigDecimal.ZERO, balance, null, true, page, size));
     }
 
     @Override
@@ -347,6 +363,7 @@ public class GameRoomServiceImpl implements GameRoomService {
                 "type", "ROOM_CANCELLED",
                 "roomId", roomId.toString()
         ));
+        gameEventLogService.log(roomId, "ROOM_CANCELLED", "cancelledBy=" + adminUserId);
 
         log.info("Room {} cancelled by admin {}", roomId, adminUserId);
     }
