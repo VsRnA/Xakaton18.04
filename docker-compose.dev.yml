@@ -84,7 +84,6 @@ services:
       - KAFKA_BOOTSTRAP=kafka:9092
       - SPRING_PROFILES_ACTIVE=docker
 
-  # ── Observability stack ──────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.51.0
     ports:
