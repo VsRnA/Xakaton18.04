@@ -1,0 +1,15 @@
+package com.prodforge.backend.application.balance;
+
+import com.prodforge.backend.domain.balance.UserBalance;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+public interface UserBalanceService {
+    UserBalance getBalance(UUID userId);
+    void reservePoints(UUID userId, BigDecimal amount, UUID gameRoomId);
+    void returnReservedPoints(UUID userId, BigDecimal amount, UUID gameRoomId);
+    void deductReserved(UUID userId, BigDecimal amount, UUID gameRoomId);
+    void deductPoints(UUID userId, BigDecimal amount, UUID gameRoomId);
+    void creditPoints(UUID userId, BigDecimal amount, UUID gameRoomId);
+}

@@ -1,0 +1,2 @@
+ALTER TABLE "gameParticipants"
+    ADD COLUMN "round2Ready" BOOLEAN NOT NULL DEFAULT FALSE;

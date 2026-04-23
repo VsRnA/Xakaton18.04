@@ -1,0 +1,30 @@
+package com.prodforge.game.infrastructure.scheduler;
+
+import com.prodforge.game.application.gameroom.GameRoomService;
+import com.prodforge.game.infrastructure.util.MdcContext;
+import lombok.extern.slf4j.Slf4j;
+import org.quartz.DisallowConcurrentExecution;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.UUID;
+
+@Slf4j
+@DisallowConcurrentExecution
+public class FillWithBotsJob implements Job {
+
+    @Autowired
+    private GameRoomService gameRoomService;
+
+    @Override
+    public void execute(JobExecutionContext ctx) {
+        UUID roomId = UUID.fromString(ctx.getMergedJobDataMap().getString("roomId"));
+        try (var mdc = MdcContext.of("roomId", roomId.toString())) {
+            log.info("FillWithBotsJob executing");
+            gameRoomService.fillWithBots(roomId);
+        } catch (Exception e) {
+            log.error("FillWithBotsJob failed: {}", e.getMessage(), e);
+        }
+    }
+}
