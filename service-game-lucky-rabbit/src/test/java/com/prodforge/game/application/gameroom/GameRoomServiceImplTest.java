@@ -66,7 +66,7 @@ class GameRoomServiceImplTest {
 
         assertThatThrownBy(() -> gameRoomService.joinRoom(roomId, userId, "Player"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Insufficient");
+                .hasMessageContaining("Недостаточно");
 
         verifyNoInteractions(gameEventPort);
     }
@@ -79,7 +79,7 @@ class GameRoomServiceImplTest {
 
         assertThatThrownBy(() -> gameRoomService.joinRoom(roomId, userId, "Player"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Room is full");
+                .hasMessageContaining("заполнена");
 
         verifyNoInteractions(gameEventPort);
     }
@@ -95,7 +95,7 @@ class GameRoomServiceImplTest {
 
         assertThatThrownBy(() -> gameRoomService.joinRoom(roomId, userId, "Player"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("not accepting");
+                .hasMessageContaining("не принимает");
 
         verifyNoInteractions(gameEventPort);
     }
@@ -109,7 +109,7 @@ class GameRoomServiceImplTest {
 
         assertThatThrownBy(() -> gameRoomService.joinRoom(roomId, userId, "Player"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("already joined");
+                .hasMessageContaining("уже присоединился");
 
         // Критично: reserve-команда НЕ должна попасть в outbox при дубле
         verify(gameEventPort, never()).publishBalanceReserve(any(), any(), any());

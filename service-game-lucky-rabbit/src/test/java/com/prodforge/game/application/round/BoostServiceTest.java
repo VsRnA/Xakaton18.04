@@ -62,7 +62,7 @@ class BoostServiceTest {
 
         assertThatThrownBy(() -> boostService.purchaseBoost(roomId, userId, 1))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Insufficient");
+                .hasMessageContaining("Недостаточно");
 
         verifyNoInteractions(gameEventPort);
     }
@@ -78,7 +78,7 @@ class BoostServiceTest {
 
         assertThatThrownBy(() -> boostService.purchaseBoost(roomId, userId, 1))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("active round");
+                .hasMessageContaining("активного раунда");
 
         verifyNoInteractions(gameEventPort);
     }
@@ -100,7 +100,7 @@ class BoostServiceTest {
 
         assertThatThrownBy(() -> boostService.purchaseBoost(roomId, userId, 1))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("already purchased");
+                .hasMessageContaining("уже куплен");
 
         verifyNoInteractions(gameEventPort);
     }
@@ -128,7 +128,7 @@ class BoostServiceTest {
 
         assertThatThrownBy(() -> boostService.purchaseBoost(roomId, userId, 2))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("already used in round 1");
+                .hasMessageContaining("уже использован в раунде 1");
 
         verifyNoInteractions(gameEventPort);
     }
