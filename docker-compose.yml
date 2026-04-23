@@ -15,30 +15,29 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
 
   kafka:
     image: apache/kafka:3.9.0
     ports:
       - "9092:9092"
+      - "9094:9094"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+
+      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-    restart: unless-stopped
 
   core:
     build:
@@ -48,8 +47,6 @@ services:
       - "${CORE_PORT:-8080}:8080"
     depends_on:
       postgres:
-        condition: service_healthy
-      kafka:
         condition: service_healthy
     environment:
       - CORE_PORT=8080
@@ -64,7 +61,6 @@ services:
       - ADMIN_USER=${ADMIN_USER}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SPRING_PROFILES_ACTIVE=docker
-    restart: unless-stopped
 
   service-game-lucky-rabbit:
     build:
@@ -75,10 +71,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
-      core:
-        condition: service_started
     environment:
       - GAME_PORT=8081
       - DB_HOST=postgres
@@ -91,9 +83,7 @@ services:
       - CORE_SERVICE_URL=http://core:8080
       - KAFKA_BOOTSTRAP=kafka:9092
       - SPRING_PROFILES_ACTIVE=docker
-    restart: unless-stopped
 
-  # ── Observability stack ──────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.51.0
     ports:
@@ -109,7 +99,6 @@ services:
     depends_on:
       - core
       - service-game-lucky-rabbit
-    restart: unless-stopped
 
   loki:
     image: grafana/loki:3.0.0
@@ -119,7 +108,6 @@ services:
       - ./monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
-    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:10.4.2
@@ -136,7 +124,6 @@ services:
     depends_on:
       - prometheus
       - loki
-    restart: unless-stopped
 
 volumes:
   postgres_data:

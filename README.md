@@ -15,6 +15,11 @@
 | Grafana | http://92.51.23.102:3000 |
 | Prometheus | http://92.51.23.102:9090 |
 
+Данные для Grafana
+```
+GRAFANA_ADMIN_USER=kubok_admin
+GRAFANA_ADMIN_PASSWORD=/A7lwLV8H5VqkSy+4bDUng==
+```
 ## Стек
 
 Java 21, Spring Boot 3.2, PostgreSQL 16, Apache Kafka 3.9, Quartz, WebSocket/STOMP, Flyway, Maven (multi-module). Мониторинг: Prometheus + Loki + Grafana.
@@ -133,3 +138,19 @@ backend/
 ## Мониторинг
 
 Метрики Prometheus: `/actuator/prometheus` на каждом сервисе. Grafana поднимается из коробки — provisioning в `monitoring/grafana/provisioning/`.
+
+## Интеграция
+
+Сервис `core` — это эмулятор вашего бэкенда. Он реализует два контракта, которые игровой сервис ожидает от реальной системы.
+
+Контракт 1. Пользователи и JWT
+
+Игровой сервис проверяет JWT из заголовка `Authorization: Bearer <token>`. Токен должен содержать `userId` (UUID пользователя). Реализуйте в вашем бэкенде выдачу таких токенов с тем же секретом, что указан в `JWT_SECRET`.
+
+Контракт 2. Баланс
+
+Игровой сервис обращается к `core` по внутренним эндпоинтам `/internal/balance/...` с заголовком `X-Internal-Secret` для списания и начисления бонусных баллов. Реализуйте эти же эндпоинты в вашем бэкенде.
+
+Что нужно изменить в конфиге
+
+Переменная `CORE_SERVICE_URL` в `.env` — поменяйте с адреса `core` на адрес вашего бэкенда. После этого `core` можно убрать из docker-compose, игровой сервис будет работать с вашей системой напрямую.
