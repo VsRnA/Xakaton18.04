@@ -3,6 +3,7 @@ package com.vsrna.game.application.gameroom;
 import com.vsrna.game.application.bot.BotService;
 import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.metrics.GameMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -47,7 +49,7 @@ class GameRoomServiceImplTest {
     @Mock RoundService roundService;
     @Mock GameRoomConfigValidator configValidator;
     @Mock GameEventLogService gameEventLogService;
-    @Mock GameMetrics gameMetrics;
+    @Spy GameMetrics gameMetrics = new GameMetrics(new SimpleMeterRegistry());
 
     @InjectMocks
     GameRoomServiceImpl gameRoomService;

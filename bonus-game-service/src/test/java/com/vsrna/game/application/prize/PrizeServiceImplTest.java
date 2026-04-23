@@ -2,6 +2,7 @@ package com.vsrna.game.application.prize;
 
 import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.metrics.GameMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.domain.gameroom.GameRoomConfigRepository;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -43,7 +45,7 @@ class PrizeServiceImplTest {
     @Mock GameEventPort gameEventPort;
     @Mock GameNotifierPort notifierPort;
     @Mock GameEventLogService gameEventLogService;
-    @Mock GameMetrics gameMetrics;
+    @Spy GameMetrics gameMetrics = new GameMetrics(new SimpleMeterRegistry());
 
     @InjectMocks
     PrizeServiceImpl prizeService;
