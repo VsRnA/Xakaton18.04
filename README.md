@@ -31,10 +31,10 @@ Java 21, Spring Boot 3.2, PostgreSQL 16, Apache Kafka 3.9, Quartz, WebSocket/STO
 
 ```bash
 # Запустить всё (оба сервиса + инфраструктура + мониторинг)
-docker-compose -f docker-compose.dev.yml up --build -d
+docker-compose up --build -d
 
 # Только инфраструктура для локальной разработки
-docker-compose -f docker-compose.dev.yml up postgres kafka
+docker-compose up postgres kafka
 
 ```
 
@@ -436,7 +436,7 @@ Authorization: Bearer <admin-jwt>
 
 - `sub` — UUID пользователя
 - `username` — отображаемое имя
-- `roles` — список ролей (`["player"]` или `["admin"]`)
+- `roles` — список ролей (`["user"]` или `["admin"]`)
 
 Реализуйте в вашем бэкенде выдачу таких токенов с тем же секретом, что указан в `JWT_SECRET`.
 
