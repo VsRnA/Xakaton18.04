@@ -19,7 +19,7 @@ public class RngServiceImpl implements RngPort {
 
     private static final int WEIGHT_MIN = -10;
     private static final int WEIGHT_MAX = 10;
-    private static final int WEIGHT_RANGE_SIZE = 21; // [WEIGHT_MIN, WEIGHT_MAX] inclusive
+    private static final int WEIGHT_RANGE_SIZE = WEIGHT_MAX - WEIGHT_MIN + 1;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
