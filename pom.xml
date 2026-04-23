@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.prodforge</groupId>
-    <artifactId>kubok-parent</artifactId>
+    <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>kubok-parent</name>
+    <name>backend</name>
 
     <modules>
         <module>core</module>
