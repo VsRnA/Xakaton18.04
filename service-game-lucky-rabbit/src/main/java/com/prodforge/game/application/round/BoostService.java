@@ -42,6 +42,22 @@ public class BoostService {
     private final GameEventLogService gameEventLogService;
     private final GameMetrics gameMetrics;
 
+    /**
+     * Покупка буста игроком в текущем раунде.
+     *
+     * Буст — это платное улучшение, которое при подсчёте очков изменяет вес одной бочки:
+     *   - Самый отрицательный вес → инвертируется (становится положительным).
+     *   - Если отрицательных нет → наименьший положительный удваивается.
+     * Фактический эффект рассчитывается в RoundScoringUtils.computeBoostEffect().
+     *
+     * Ограничения:
+     *   - Буст можно купить только пока раунд активен (статус ROUND_1 / ROUND_2).
+     *   - Один буст на раунд: повторная покупка в том же раунде запрещена.
+     *   - Один буст на всю игру: если уже использован в раунде 1, в раунде 2 недоступен.
+     *   - Баланс игрока должен покрывать стоимость буста.
+     *
+     * Деньги списываются через BalancePort (событие в Kafka, не прямой вызов).
+     */
     @Transactional
     public void purchaseBoost(UUID roomId, UUID userId, int roundNumber) {
         var config = gameRoomConfigRepository.get(GameRoomConfigQuery.byRoom(roomId));
@@ -66,12 +82,14 @@ public class BoostService {
         var participant = participantRepository.get(GameParticipantQuery.byRoomAndUser(roomId, userId));
         var roundResult = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, roundNumber));
 
+        // Проверка: буст уже куплен в этом раунде
         var existingEntry = entryRepository.find(
                 ParticipantRoundEntryQuery.byRoundResultAndParticipant(roundResult.getId(), participant.getId()));
         if (existingEntry.isPresent() && existingEntry.get().isBoostPurchased()) {
             throw ApiException.badRequest(GameErrorMessages.BOOST_ALREADY_PURCHASED_THIS_ROUND);
         }
 
+        // Проверка: буст уже использован в раунде 1 (запрос на раунд 2)
         if (roundNumber == RoundConstants.ROUND_2) {
             var round1Result = roundResultRepository.find(RoundResultQuery.byRoomAndRound(roomId, RoundConstants.ROUND_1));
             if (round1Result.isPresent()) {
@@ -83,6 +101,7 @@ public class BoostService {
             }
         }
 
+        // Флаг буста проставляется в запись участника — фактический пересчёт при финализации раунда
         existingEntry.ifPresentOrElse(
                 entry -> entryRepository.update(
                         ParticipantRoundEntryQuery.byId(entry.getId()),

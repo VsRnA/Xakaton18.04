@@ -78,6 +78,17 @@ public class RoundLifecycleService {
     private final GameEventLogService gameEventLogService;
     private final GameMetrics gameMetrics;
 
+    /**
+     * Запускает раунд (1 или 2).
+     *
+     * Поток:
+     *   1. Если раунд 1 и активных игроков ≤ FINALISTS_COUNT → пропускаем раунд 1,
+     *      все сразу становятся финалистами (bypassRound1).
+     *   2. Меняем статус комнаты на ROUND_1 / ROUND_2.
+     *   3. Генерируем RNG commitment: seed скрыт в БД, клиентам публикуется только его хэш.
+     *   4. Планируем таймер окончания раунда (Quartz job).
+     *   5. Публикуем WebSocket-событие с ID бочек и seedHash — игроки начинают выбор.
+     */
     @Transactional
     public void startRound(UUID roomId, int roundNumber) {
         log.info("Starting round {} for room {}", roundNumber, roomId);
@@ -98,6 +109,7 @@ public class RoundLifecycleService {
 
         RngCommitment commitment = rngPort.commit(roomId, roundNumber);
         RoundResult roundResult = roundResultRepository.create(new RoundResult(roomId, roundNumber));
+        // Сохраняем и хэш (публичный), и rawSeed (приватный до reveal)
         roundResultRepository.update(
                 RoundResultQuery.byId(roundResult.getId()),
                 RoundResultPatch.commit(commitment.seedHash(), commitment.rawSeed()));
@@ -117,6 +129,16 @@ public class RoundLifecycleService {
         (roundNumber == RoundConstants.ROUND_1 ? gameMetrics.round1Started : gameMetrics.round2Started).increment();
     }
 
+    /**
+     * Раскрывает веса бочек по истечении времени выбора.
+     *
+     * Поток:
+     *   1. Достаём rawSeed из БД и передаём в RNG — получаем 12 весов [-10, +10].
+     *   2. Присваиваем веса бочкам в порядке их создания (индекс = порядковый номер).
+     *   3. Меняем статус комнаты на BOOST_DECISION — открывается окно для покупки буста.
+     *   4. Планируем таймер окончания boost decision.
+     *   5. Публикуем событие BOOST_DECISION_STARTED (без весов — клиент ещё не видит результаты).
+     */
     @Transactional
     public void resolveRound(UUID roomId, int roundNumber) {
         log.info("Resolving round {} for room {}", roundNumber, roomId);
@@ -124,6 +146,7 @@ public class RoundLifecycleService {
         var roundResult = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, roundNumber));
         List<BigDecimal> weights = rngPort.reveal(roundResult.getRawSeed(), RoundConstants.BARRELS_PER_ROUND);
 
+        // Веса назначаются по порядку: бочка[0] → weight[0], бочка[1] → weight[1], ...
         List<Barrel> barrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
         for (int barrelIndex = 0; barrelIndex < barrels.size(); barrelIndex++) {
             barrels.get(barrelIndex).setWeight(weights.get(barrelIndex));
@@ -147,6 +170,14 @@ public class RoundLifecycleService {
         ));
     }
 
+    /**
+     * Открывает окно буста: публикует веса бочек и rawSeed клиентам.
+     *
+     * После этого события:
+     *   - Игроки видят веса своих бочек и могут проверить seed.
+     *   - Игроки могут купить буст (BoostService.purchaseBoost).
+     *   - В payload включены уже рассчитанные эффекты буста для тех, кто успел купить раньше.
+     */
     @Transactional
     public void startBoostWindow(UUID roomId, int roundNumber) {
         log.info("Starting boost window for room {} round {}", roomId, roundNumber);
@@ -167,6 +198,20 @@ public class RoundLifecycleService {
         notifierPort.publishRoundEvent(roomId, payload);
     }
 
+    /**
+     * Финализирует раунд: подсчитывает очки, ранжирует участников, определяет победителей/выбывших.
+     *
+     * Поток:
+     *   1. Боты делают выбор бочек (с учётом protectionMode).
+     *   2. Добавляем нулевые записи для игроков, не сделавших выбор.
+     *   3. Выбываем игроков без выбора (статус ELIMINATED, списываем зарезервированные баллы).
+     *   4. Считаем очки каждому: сумма весов выбранных бочек + эффект буста.
+     *   5. Сортируем по убыванию очков; тай-брейк: меньше бочек → лучше; при равенстве → раньше выбрал.
+     *   6. Сохраняем ранги в БД.
+     *   7. Публикуем ROUND_COMPLETED с победителем и критерием победы.
+     *   8. Если раунд 1 → переводим топ-2 в финал (advanceToFinal).
+     *      Если раунд 2 → распределяем призы (prizeService.distributePrize).
+     */
     @Transactional
     public void finalizeRound(UUID roomId, int roundNumber) {
         log.info("Finalizing round {} for room {}: scoring entries and determining winner", roundNumber, roomId);
@@ -175,6 +220,7 @@ public class RoundLifecycleService {
         List<Barrel> barrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
         Map<UUID, BigDecimal> barrelWeights = buildBarrelWeightMap(barrels);
 
+        // protectionMode = true если система в убытке: боты будут выбирать лучшие бочки
         boolean protectionMode = gameHistoryAnalyticsRepository.getCumulativeSystemBalance()
                 .compareTo(BigDecimal.ZERO) < 0;
         botService.submitBotSelections(roomId, roundNumber, protectionMode, barrelWeights);
@@ -187,9 +233,11 @@ public class RoundLifecycleService {
                 .listByEntries(entryIds).stream()
                 .collect(Collectors.groupingBy(ParticipantBarrelSelection::getEntryId));
 
+        // Участники без записи (не открывали раунд) получают пустую запись с нулевым счётом
         entries = addDefaultEntriesForAbsentParticipants(entries, roundResult.getId(), roomId, roundNumber);
 
         List<String> disqualifiedIds = new ArrayList<>();
+        // Участники без выбора дисквалифицируются и не участвуют в ранжировании
         entries = eliminateNoSelectionParticipants(entries, selectionsByEntry, roomId, disqualifiedIds);
 
         scoreAndRankEntries(entries, selectionsByEntry, barrelWeights);
@@ -230,6 +278,10 @@ public class RoundLifecycleService {
         }
     }
 
+    /**
+     * Создаёт пустые записи участника для тех, кто не сделал ни одного выбора.
+     * Такие участники будут дисквалифицированы в eliminateNoSelectionParticipants.
+     */
     private List<ParticipantRoundEntry> addDefaultEntriesForAbsentParticipants(
             List<ParticipantRoundEntry> entries, UUID roundResultId, UUID roomId, int roundNumber) {
         ParticipantStatus statusForRound = roundNumber == RoundConstants.ROUND_1
@@ -252,6 +304,11 @@ public class RoundLifecycleService {
         return result;
     }
 
+    /**
+     * Выбывает участников, не выбравших ни одной бочки.
+     * Реальным игрокам списываются зарезервированные баллы через BalancePort.
+     * Возвращает только участников с выбором.
+     */
     private List<ParticipantRoundEntry> eliminateNoSelectionParticipants(
             List<ParticipantRoundEntry> entries,
             Map<UUID, List<ParticipantBarrelSelection>> selectionsByEntry,
@@ -283,6 +340,14 @@ public class RoundLifecycleService {
         return remaining;
     }
 
+    /**
+     * Считает очки и сортирует записи участников.
+     *
+     * Сортировка (порядок приоритетов):
+     *   1. totalScore DESC  — больше очков → выше место.
+     *   2. selectionTimestamp ASC — при равных очках: кто раньше выбрал → выше место.
+     *      (selectionCount учитывается в determineWinCriteria, но НЕ в сортировке здесь)
+     */
     private void scoreAndRankEntries(List<ParticipantRoundEntry> entries,
                                      Map<UUID, List<ParticipantBarrelSelection>> selectionsByEntry,
                                      Map<UUID, BigDecimal> barrelWeights) {
@@ -381,12 +446,18 @@ public class RoundLifecycleService {
         payload.put("roundNumber", roundNumber);
         payload.put("barrelWeights", weightMap);
         payload.put("seedHash", roundResult.getSeedHash());
+        // rawSeed раскрывается здесь — игроки могут проверить SHA-256(rawSeed) == seedHash
         payload.put("rawSeed", roundResult.getRawSeed());
         payload.put("boostEffects", boostEffects);
         payload.put("expiresAt", expiresAt.toEpochMilli());
         return payload;
     }
 
+    /**
+     * Обрабатывает подтверждение готовности финалиста к раунду 2.
+     * Как только оба финалиста подтвердили готовность — раунд 2 стартует немедленно,
+     * не дожидаясь таймаута.
+     */
     @Transactional
     public void markFinalistReady(UUID roomId, UUID userId) {
         var room = gameRoomRepository.get(GameRoomQuery.byId(roomId));
@@ -425,6 +496,11 @@ public class RoundLifecycleService {
         startRound(roomId, RoundConstants.ROUND_2);
     }
 
+    /**
+     * Пропускает раунд 1, если игроков не больше, чем мест в финале.
+     * Все активные участники сразу становятся финалистами.
+     * Боты автоматически помечаются как готовые к раунду 2.
+     */
     private void bypassRound1(UUID roomId, List<GameParticipant> participants) {
         RoundResult skippedRound = roundResultRepository.create(new RoundResult(roomId, RoundConstants.ROUND_1));
         roundResultRepository.update(
@@ -459,6 +535,11 @@ public class RoundLifecycleService {
         }
     }
 
+    /**
+     * Переводит топ-FINALISTS_COUNT участников в финал, остальных выбывает.
+     * Реальным проигравшим списываются зарезервированные баллы.
+     * Если все финалисты — боты, раунд 2 стартует немедленно.
+     */
     private void advanceToFinal(UUID roomId, List<ParticipantRoundEntry> sortedEntries, String winCriteria) {
         List<String> finalistIds = new ArrayList<>();
         List<GameParticipant> eliminated = new ArrayList<>();

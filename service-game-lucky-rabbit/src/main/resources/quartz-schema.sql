@@ -1,7 +1,3 @@
--- Quartz JDBC tables for PostgreSQL
--- Idempotent: uses CREATE TABLE IF NOT EXISTS
--- Runs via spring.sql.init before the Quartz scheduler starts
-
 CREATE SCHEMA IF NOT EXISTS game;
 SET search_path TO game;
 

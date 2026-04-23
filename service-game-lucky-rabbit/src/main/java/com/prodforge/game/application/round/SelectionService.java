@@ -52,6 +52,14 @@ public class SelectionService {
     private final GameNotifierPort notifierPort;
     private final GameEventLogService gameEventLogService;
 
+    /**
+     * Возвращает бочки раунда в уникальном порядке для конкретного игрока.
+     *
+     * Порядок детерминирован: seed = XOR(старшие биты userId, младшие биты userId, roundNumber сдвинутый на 32 бита).
+     * Один и тот же игрок всегда видит бочки в одном порядке для данного раунда,
+     * но разные игроки видят разный порядок — это исключает стадное следование за чужим выбором.
+     * Веса бочкам ещё не присвоены, поэтому порядок не даёт никакого игрового преимущества.
+     */
     @Transactional(readOnly = true)
     public List<Barrel> getShuffledBarrels(UUID roomId, UUID userId, int roundNumber) {
         List<Barrel> barrels = new ArrayList<>(
@@ -62,6 +70,17 @@ public class SelectionService {
         return barrels;
     }
 
+    /**
+     * Сохраняет выбор бочек игрока в текущем раунде.
+     *
+     * Правила:
+     *   - Количество выбранных бочек: от 1 до maxBarrelSelection (из конфига комнаты).
+     *   - Выбор можно переписать: старые выборки удаляются, создаются новые. Фиксируется последний timestamp.
+     *   - Все переданные barrelId должны принадлежать данному раунду — иначе ошибка.
+     *   - Выбор принимается только пока раунд активен (статус ROUND_1 или ROUND_2).
+     *
+     * После сохранения публикуется событие с текущим счётчиком выбравших игроков.
+     */
     @Transactional
     public void submitSelection(UUID roomId, UUID userId, int roundNumber,
                                 List<UUID> barrelIds, Instant timestamp) {
@@ -76,6 +95,7 @@ public class SelectionService {
             throw ApiException.badRequest(GameErrorMessages.roundNotInProgress(roundNumber));
         }
 
+        // Проверяем, что игрок не передал чужие или несуществующие barrelId
         List<Barrel> validBarrels = barrelRepository.list(BarrelQuery.byRoomAndRound(roomId, roundNumber));
         Set<UUID> validIds = validBarrels.stream().map(Barrel::getId).collect(Collectors.toSet());
         for (UUID bid : barrelIds) {
@@ -92,6 +112,7 @@ public class SelectionService {
 
         UUID entryId;
         if (existing.isPresent()) {
+            // Игрок меняет выбор: удаляем старые выборки и обновляем запись
             ParticipantRoundEntry entry = existing.get();
             entryId = entry.getId();
             selectionRepository.delete(ParticipantBarrelSelectionQuery.byEntry(entryId));
@@ -99,6 +120,7 @@ public class SelectionService {
                     ParticipantRoundEntryQuery.byId(entryId),
                     ParticipantRoundEntryPatch.selection(timestamp, barrelIds.size()));
         } else {
+            // Первый выбор игрока в этом раунде
             ParticipantRoundEntry newEntry = new ParticipantRoundEntry(roundResult.getId(), participant.getId());
             newEntry.setSelectionTimestamp(timestamp);
             newEntry.setSelectionCount(barrelIds.size());

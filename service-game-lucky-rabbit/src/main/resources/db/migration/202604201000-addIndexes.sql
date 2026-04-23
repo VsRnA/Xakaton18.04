@@ -1,4 +1,3 @@
--- Индексы для ускорения фильтрации и JOIN комнат по конфигурации
 CREATE INDEX IF NOT EXISTS idx_game_rooms_status ON game."gameRooms" (status);
 CREATE INDEX IF NOT EXISTS idx_config_entry_fee ON game."gameRoomConfig" ("entryFeeAmount");
 CREATE INDEX IF NOT EXISTS idx_config_max_players ON game."gameRoomConfig" ("maxPlayers");

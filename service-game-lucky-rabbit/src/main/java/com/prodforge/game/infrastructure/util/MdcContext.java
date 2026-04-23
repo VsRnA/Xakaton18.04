@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * AutoCloseable wrapper for SLF4J MDC.
- * Usage: try (var mdc = MdcContext.of("roomId", id, "round", "1")) { ... }
+ * Вспомогательный класс для добавления контекстных полей в логи через SLF4J MDC.
+ * Реализует AutoCloseable — поля автоматически удаляются при выходе из блока try-with-resources.
  */
 public final class MdcContext implements AutoCloseable {
 

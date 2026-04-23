@@ -22,7 +22,7 @@ public class RoundDto {
     public record BarrelResponse(
             UUID id,
             String barrelCode,
-            BigDecimal weight  // null до завершения раунда
+            BigDecimal weight
     ) {}
 
     public record ParticipantScoreResponse(

@@ -11,10 +11,7 @@ import java.util.Deque;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * In-memory per-user fixed-window rate limiter for the joinRoom endpoint.
- * Prevents a single user from hammering the endpoint despite the DB pessimistic lock.
- */
+
 @Component
 public class JoinRateLimiter {
 

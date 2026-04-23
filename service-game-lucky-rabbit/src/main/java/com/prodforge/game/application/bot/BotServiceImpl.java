@@ -39,6 +39,7 @@ public class BotServiceImpl implements BotService {
     public List<GameParticipant> createBotsForRoom(UUID roomId, int count, BigDecimal entryFeeAmount) {
         List<GameParticipant> bots = new ArrayList<>();
         for (int botNumber = 1; botNumber <= count; botNumber++) {
+            // userId = null — отличительный признак бота (нет реального пользователя)
             GameParticipant bot = new GameParticipant(roomId, null, true,
                     String.format(BOT_NAME_FORMAT, botNumber), entryFeeAmount);
             bots.add(participantRepository.create(bot));
@@ -46,6 +47,17 @@ public class BotServiceImpl implements BotService {
         return bots;
     }
 
+    /**
+     * Боты делают выбор бочек в момент финализации раунда, после того как веса уже известны.
+     * Выбор записывается в БД так же, как и выбор живого игрока.
+     *
+     * Режим работы зависит от финансового состояния системы (protectionMode):
+     *   - protectionMode=false: случайный выбор (SecureRandom shuffle).
+     *   - protectionMode=true : боты выбирают бочки с наибольшими весами,
+     *     чтобы увеличить свои шансы на победу и снизить потери системы.
+     *
+     * protectionMode включается в RoundLifecycleService, если накопленный баланс системы отрицательный.
+     */
     @Override
     @Transactional
     public void submitBotSelections(UUID roomId, int roundNumber, boolean protectionMode,
@@ -83,6 +95,14 @@ public class BotServiceImpl implements BotService {
         }
     }
 
+    /**
+     * Выбирает бочки для бота.
+     *
+     * protectionMode=true  → сортировка по убыванию веса, берём top-N.
+     *                         Бот выбирает «лучшие» бочки, чтобы выиграть у реального игрока.
+     * protectionMode=false → случайный порядок через SecureRandom, берём первые N.
+     *                         Бот не имеет преимущества перед реальным игроком.
+     */
     private List<Barrel> selectBarrels(List<Barrel> barrels, Map<UUID, BigDecimal> barrelWeights,
                                        int maxSelection, boolean protectionMode) {
         int count = Math.min(maxSelection, barrels.size());

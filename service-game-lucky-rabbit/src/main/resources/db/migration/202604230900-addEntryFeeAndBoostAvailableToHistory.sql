@@ -1,0 +1,3 @@
+ALTER TABLE game."gameHistory"
+    ADD COLUMN IF NOT EXISTS "entryFeeAmount" NUMERIC(12, 2),
+    ADD COLUMN IF NOT EXISTS "boostAvailable" BOOLEAN NOT NULL DEFAULT FALSE;

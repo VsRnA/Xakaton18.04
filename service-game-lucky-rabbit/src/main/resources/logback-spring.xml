@@ -3,7 +3,6 @@
     <property name="LOG_PATTERN"
               value="%d{HH:mm:ss.SSS} %-5level %logger{30} [room=%X{roomId:--} user=%X{userId:--} round=%X{round:--}] %msg%n%ex"/>
 
-    <!-- Консольный вывод — всегда -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
@@ -11,7 +10,6 @@
         </encoder>
     </appender>
 
-    <!-- Loki — только в docker-профиле -->
     <springProfile name="docker">
         <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
             <batchMaxItems>1000</batchMaxItems>
@@ -36,7 +34,6 @@
         </root>
     </springProfile>
 
-    <!-- Без Loki — для локальной разработки -->
     <springProfile name="!docker">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
