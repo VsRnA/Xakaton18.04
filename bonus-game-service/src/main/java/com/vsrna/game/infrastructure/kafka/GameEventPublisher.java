@@ -31,43 +31,44 @@ public class GameEventPublisher implements GameEventPort {
                                     BigDecimal prizePool, BigDecimal prizeAwarded,
                                     BigDecimal systemRevenue, String winCriteria) {
         GameFinishedEvent event = new GameFinishedEvent(
+                GameFinishedEvent.CURRENT_VERSION,
                 roomId, winnerId, winnerIsBot, prizePool, prizeAwarded, systemRevenue, winCriteria);
         enqueue("GAME", roomId.toString(), "GAME_FINISHED", TOPIC_FINISHED, event);
     }
 
     public void publishEntryReserved(UUID userId, UUID roomId, BigDecimal amount) {
-        GameEntryReservedEvent event = new GameEntryReservedEvent(userId, roomId, amount);
+        GameEntryReservedEvent event = new GameEntryReservedEvent(GameEntryReservedEvent.CURRENT_VERSION, userId, roomId, amount);
         enqueue("GAME_ROOM", roomId.toString(), "ENTRY_RESERVED", TOPIC_ENTRY_RESERVED, event);
     }
 
     @Override
     public void publishBalanceReserve(UUID userId, BigDecimal amount, UUID roomId) {
         enqueue("BALANCE", userId.toString(), "BALANCE_RESERVE", TOPIC_BALANCE_COMMAND,
-                new BalanceCommandEvent("RESERVE", userId, amount, roomId));
+                new BalanceCommandEvent(BalanceCommandEvent.CURRENT_VERSION, "RESERVE", userId, amount, roomId));
     }
 
     @Override
     public void publishBalanceRelease(UUID userId, BigDecimal amount, UUID roomId) {
         enqueue("BALANCE", userId.toString(), "BALANCE_RELEASE", TOPIC_BALANCE_COMMAND,
-                new BalanceCommandEvent("RELEASE", userId, amount, roomId));
+                new BalanceCommandEvent(BalanceCommandEvent.CURRENT_VERSION, "RELEASE", userId, amount, roomId));
     }
 
     @Override
     public void publishBalanceAward(UUID userId, BigDecimal amount, UUID roomId) {
         enqueue("BALANCE", userId.toString(), "BALANCE_AWARD", TOPIC_BALANCE_COMMAND,
-                new BalanceCommandEvent("AWARD", userId, amount, roomId));
+                new BalanceCommandEvent(BalanceCommandEvent.CURRENT_VERSION, "AWARD", userId, amount, roomId));
     }
 
     @Override
     public void publishBalanceDeduct(UUID userId, BigDecimal amount, UUID roomId) {
         enqueue("BALANCE", userId.toString(), "BALANCE_DEDUCT", TOPIC_BALANCE_COMMAND,
-                new BalanceCommandEvent("DEDUCT", userId, amount, roomId));
+                new BalanceCommandEvent(BalanceCommandEvent.CURRENT_VERSION, "DEDUCT", userId, amount, roomId));
     }
 
     @Override
     public void publishBalanceDeductReserved(UUID userId, BigDecimal amount, UUID roomId) {
         enqueue("BALANCE", userId.toString(), "BALANCE_DEDUCT_RESERVED", TOPIC_BALANCE_COMMAND,
-                new BalanceCommandEvent("DEDUCT_RESERVED", userId, amount, roomId));
+                new BalanceCommandEvent(BalanceCommandEvent.CURRENT_VERSION, "DEDUCT_RESERVED", userId, amount, roomId));
     }
 
     private void enqueue(String aggregateType, String aggregateId, String eventType,

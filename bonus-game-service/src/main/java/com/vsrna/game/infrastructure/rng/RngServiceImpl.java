@@ -18,7 +18,8 @@ import java.util.UUID;
 public class RngServiceImpl implements RngPort {
 
     private static final int WEIGHT_MIN = -10;
-    private static final int WEIGHT_RANGE_SIZE = 21;
+    private static final int WEIGHT_MAX = 10;
+    private static final int WEIGHT_RANGE_SIZE = 21; // [WEIGHT_MIN, WEIGHT_MAX] inclusive
 
     private final SecureRandom secureRandom = new SecureRandom();
 
