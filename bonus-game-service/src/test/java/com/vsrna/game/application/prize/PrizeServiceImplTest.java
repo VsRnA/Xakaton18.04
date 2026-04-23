@@ -1,6 +1,7 @@
 package com.vsrna.game.application.prize;
 
 import com.vsrna.game.application.gameevent.GameEventLogService;
+import com.vsrna.game.application.metrics.GameMetrics;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.domain.gameroom.GameRoomConfigRepository;
@@ -42,6 +43,7 @@ class PrizeServiceImplTest {
     @Mock GameEventPort gameEventPort;
     @Mock GameNotifierPort notifierPort;
     @Mock GameEventLogService gameEventLogService;
+    @Mock GameMetrics gameMetrics;
 
     @InjectMocks
     PrizeServiceImpl prizeService;

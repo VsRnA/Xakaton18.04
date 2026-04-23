@@ -2,6 +2,7 @@ package com.vsrna.game.application.round;
 
 import com.vsrna.game.application.bot.BotService;
 import com.vsrna.game.application.gameevent.GameEventLogService;
+import com.vsrna.game.application.metrics.GameMetrics;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.port.GameSchedulerPort;
@@ -57,6 +58,7 @@ class RoundLifecycleServiceTest {
     @Mock BotService botService;
     @Mock GameEventPort gameEventPort;
     @Mock GameEventLogService gameEventLogService;
+    @Mock GameMetrics gameMetrics;
 
     @InjectMocks
     RoundLifecycleService service;

@@ -17,9 +17,10 @@ public final class RoundScoringUtils {
 
     private RoundScoringUtils() {}
 
-    public static final String WIN_CRITERIA_SCORE     = "SCORE";
-    public static final String WIN_CRITERIA_DIRECT    = "DIRECT";
-    public static final String WIN_CRITERIA_TIMESTAMP = "TIMESTAMP_TIEBREAK";
+    public static final String WIN_CRITERIA_SCORE            = "SCORE";
+    public static final String WIN_CRITERIA_DIRECT           = "DIRECT";
+    public static final String WIN_CRITERIA_SELECTION_COUNT  = "SELECTION_COUNT_TIEBREAK";
+    public static final String WIN_CRITERIA_TIMESTAMP        = "TIMESTAMP_TIEBREAK";
 
     public record BoostEffect(UUID barrelId, BigDecimal originalWeight, BigDecimal boostedWeight) {}
 
@@ -87,6 +88,9 @@ public final class RoundScoringUtils {
         if (first.getTotalScore() != null && second.getTotalScore() != null
                 && first.getTotalScore().compareTo(second.getTotalScore()) != 0) {
             return WIN_CRITERIA_SCORE;
+        }
+        if (first.getSelectionCount() != second.getSelectionCount()) {
+            return WIN_CRITERIA_SELECTION_COUNT;
         }
         return WIN_CRITERIA_TIMESTAMP;
     }

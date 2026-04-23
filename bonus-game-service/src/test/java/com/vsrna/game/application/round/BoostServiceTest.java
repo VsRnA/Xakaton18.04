@@ -1,6 +1,7 @@
 package com.vsrna.game.application.round;
 
 import com.vsrna.game.application.gameevent.GameEventLogService;
+import com.vsrna.game.application.metrics.GameMetrics;
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.domain.exception.ApiException;
@@ -43,6 +44,7 @@ class BoostServiceTest {
     @Mock BalancePort balancePort;
     @Mock GameEventPort gameEventPort;
     @Mock GameEventLogService gameEventLogService;
+    @Mock GameMetrics gameMetrics;
 
     @InjectMocks
     BoostService boostService;
