@@ -3,18 +3,18 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: stoloto-core
+  - job_name: core
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ['stoloto-core:8080']
+      - targets: ['core:8080']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
 
-  - job_name: bonus-game-service
+  - job_name: service-game-lucky-rabbit
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ['bonus-game-service:8081']
+      - targets: ['service-game-lucky-rabbit:8081']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance

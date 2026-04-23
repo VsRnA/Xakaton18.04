@@ -11,15 +11,15 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.vsrna</groupId>
+    <groupId>com.prodforge</groupId>
     <artifactId>kubok-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>kubok-parent</name>
 
     <modules>
-        <module>stoloto-core</module>
-        <module>bonus-game-service</module>
+        <module>core</module>
+        <module>service-game-lucky-rabbit</module>
     </modules>
 
     <properties>

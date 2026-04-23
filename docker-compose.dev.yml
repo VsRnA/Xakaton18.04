@@ -39,10 +39,10 @@ services:
 
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
 
-  stoloto-core:
+  core:
     build:
       context: .
-      dockerfile: stoloto-core/Dockerfile
+      dockerfile: core/Dockerfile
     ports:
       - "${CORE_PORT:-8080}:8080"
     depends_on:
@@ -62,10 +62,10 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SPRING_PROFILES_ACTIVE=docker
 
-  bonus-game-service:
+  service-game-lucky-rabbit:
     build:
       context: .
-      dockerfile: bonus-game-service/Dockerfile
+      dockerfile: service-game-lucky-rabbit/Dockerfile
     ports:
       - "${GAME_PORT:-8081}:8081"
     depends_on:
@@ -80,7 +80,7 @@ services:
       - DB_PASS=${DB_PASS}
       - JWT_SECRET=${JWT_SECRET}
       - INTERNAL_SECRET=${INTERNAL_SECRET}
-      - CORE_SERVICE_URL=http://stoloto-core:8080
+      - CORE_SERVICE_URL=http://core:8080
       - KAFKA_BOOTSTRAP=kafka:9092
       - SPRING_PROFILES_ACTIVE=docker
 
@@ -98,8 +98,8 @@ services:
       - '--storage.tsdb.retention.time=7d'
       - '--web.enable-lifecycle'
     depends_on:
-      - stoloto-core
-      - bonus-game-service
+      - core
+      - service-game-lucky-rabbit
 
   loki:
     image: grafana/loki:3.0.0

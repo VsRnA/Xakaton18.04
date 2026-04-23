@@ -22,8 +22,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and test stoloto-core
-        run: mvn verify -pl stoloto-core -am -q
+      - name: Build and test core
+        run: mvn verify -pl core -am -q
 
-      - name: Build and test bonus-game-service
-        run: mvn verify -pl bonus-game-service -am -q
+      - name: Build and test service-game-lucky-rabbit
+        run: mvn verify -pl service-game-lucky-rabbit -am -q

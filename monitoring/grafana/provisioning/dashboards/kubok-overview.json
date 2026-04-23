@@ -1,5 +1,5 @@
 {
-  "title": "Kubok — Service Overview",
+  "title": "Kubok — Обзор сервисов",
   "uid": "kubok-overview",
   "schemaVersion": 39,
   "version": 3,
@@ -18,7 +18,7 @@
       {
         "name": "app",
         "type": "query",
-        "label": "Service",
+        "label": "Сервис",
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
@@ -206,12 +206,12 @@
       "targets": [
         {
           "expr": "jvm_memory_used_bytes{application=~\"$app\", area=\"heap\"}",
-          "legendFormat": "{{application}} used",
+          "legendFormat": "{{application}} используется",
           "refId": "A"
         },
         {
           "expr": "jvm_memory_committed_bytes{application=~\"$app\", area=\"heap\"}",
-          "legendFormat": "{{application}} committed",
+          "legendFormat": "{{application}} выделено",
           "refId": "B"
         }
       ],
@@ -255,17 +255,17 @@
       "targets": [
         {
           "expr": "hikaricp_connections_active{application=~\"$app\"}",
-          "legendFormat": "{{application}} active",
+          "legendFormat": "{{application}} активные",
           "refId": "A"
         },
         {
           "expr": "hikaricp_connections_idle{application=~\"$app\"}",
-          "legendFormat": "{{application}} idle",
+          "legendFormat": "{{application}} простаивают",
           "refId": "B"
         },
         {
           "expr": "hikaricp_connections_pending{application=~\"$app\"}",
-          "legendFormat": "{{application}} pending",
+          "legendFormat": "{{application}} ожидают",
           "refId": "C"
         }
       ],
@@ -309,12 +309,12 @@
       "targets": [
         {
           "expr": "jvm_threads_live_threads{application=~\"$app\"}",
-          "legendFormat": "{{application}} live",
+          "legendFormat": "{{application}} активные",
           "refId": "A"
         },
         {
           "expr": "jvm_threads_states_threads{application=~\"$app\", state=\"blocked\"}",
-          "legendFormat": "{{application}} blocked",
+          "legendFormat": "{{application}} заблокированные",
           "refId": "B"
         }
       ],
@@ -480,7 +480,7 @@
     {
       "id": 20,
       "type": "timeseries",
-      "title": "Игры — старт / завершение / отмена",
+      "title": "Игры — начато / завершено / отменено (начато = завершено + отменено + в процессе)",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -494,17 +494,17 @@
       "targets": [
         {
           "expr": "sum(increase(game_rooms_started_total{application=~\"$app\"}[$__range]))",
-          "legendFormat": "started",
+          "legendFormat": "начато",
           "refId": "A"
         },
         {
           "expr": "sum(increase(game_rooms_finished_total{application=~\"$app\"}[$__range]))",
-          "legendFormat": "finished",
+          "legendFormat": "завершено",
           "refId": "B"
         },
         {
           "expr": "sum(increase(game_rooms_cancelled_total{application=~\"$app\"}[$__range]))",
-          "legendFormat": "cancelled",
+          "legendFormat": "отменено",
           "refId": "C"
         }
       ],
@@ -547,12 +547,12 @@
       "targets": [
         {
           "expr": "sum(increase(game_rooms_finished_total{application=~\"$app\", winner_type=\"real\"}[$__range]))",
-          "legendFormat": "real player wins",
+          "legendFormat": "победы реального игрока",
           "refId": "A"
         },
         {
           "expr": "sum(increase(game_rooms_finished_total{application=~\"$app\", winner_type=\"bot\"}[$__range]))",
-          "legendFormat": "bot wins",
+          "legendFormat": "победы бота",
           "refId": "B"
         }
       ],
@@ -581,7 +581,7 @@
     {
       "id": 22,
       "type": "timeseries",
-      "title": "Игроки — вступления / дисквалификации",
+      "title": "Игроки — вступления / выбыли (не выбрали бочку вовремя)",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -595,12 +595,12 @@
       "targets": [
         {
           "expr": "sum(increase(game_players_joined_total{application=~\"$app\"}[$__range]))",
-          "legendFormat": "joined",
+          "legendFormat": "вступили",
           "refId": "A"
         },
         {
           "expr": "sum(increase(game_players_disqualified_total{application=~\"$app\"}[$__range]))",
-          "legendFormat": "disqualified",
+          "legendFormat": "выбыли (без выбора бочки)",
           "refId": "B"
         }
       ],
@@ -643,7 +643,7 @@
       "targets": [
         {
           "expr": "sum(increase(game_boosts_purchased_total{application=~\"$app\"}[$__range]))",
-          "legendFormat": "boost purchases",
+          "legendFormat": "покупки бустов",
           "refId": "A"
         }
       ],
@@ -672,7 +672,7 @@
     {
       "id": 24,
       "type": "timeseries",
-      "title": "Экономика — призы / выручка системы (баллов)",
+      "title": "Экономика — призы / выручка системы (баллов за период)",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -685,19 +685,20 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(game_prize_awarded_points_total{application=~\"$app\"}[5m])) * 60",
-          "legendFormat": "prize awarded (pts/min)",
+          "expr": "sum(increase(game_prize_awarded_points_total{application=~\"$app\"}[$__range]))",
+          "legendFormat": "Выдано призов (баллы)",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(game_system_revenue_points_total{application=~\"$app\"}[5m])) * 60",
-          "legendFormat": "system revenue (pts/min)",
+          "expr": "sum(increase(game_system_revenue_points_total{application=~\"$app\"}[$__range]))",
+          "legendFormat": "Выручка системы (баллы)",
           "refId": "B"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "none",
+          "decimals": 0,
           "color": {
             "mode": "palette-classic"
           }
@@ -707,7 +708,7 @@
       "options": {
         "legend": {
           "calcs": [
-            "mean",
+            "sum",
             "max"
           ],
           "displayMode": "table",
@@ -735,7 +736,7 @@
       "targets": [
         {
           "expr": "game_outbox_pending{application=~\"$app\"}",
-          "legendFormat": "{{application}} pending",
+          "legendFormat": "{{application}} в очереди",
           "refId": "A"
         }
       ],
@@ -808,7 +809,7 @@
       "targets": [
         {
           "expr": "sum by (application) (rate(kafka_producer_record_send_total{application=~\"$app\"}[1m]))",
-          "legendFormat": "{{application}} send/s",
+          "legendFormat": "{{application}} записей/сек",
           "refId": "A"
         }
       ],
@@ -838,7 +839,7 @@
     {
       "id": 9,
       "type": "timeseries",
-      "title": "Kafka — Consumer lag",
+      "title": "Kafka — Отставание консьюмера",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -852,7 +853,7 @@
       "targets": [
         {
           "expr": "sum by (application, topic) (kafka_consumer_records_lag{application=~\"$app\"})",
-          "legendFormat": "{{application}} lag ({{topic}})",
+          "legendFormat": "{{application}} отставание ({{topic}})",
           "refId": "A"
         }
       ],

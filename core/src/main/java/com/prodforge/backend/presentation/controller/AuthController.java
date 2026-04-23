@@ -1,0 +1,44 @@
+package com.prodforge.backend.presentation.controller;
+
+import com.prodforge.backend.application.auth.AuthService;
+import com.prodforge.backend.presentation.dto.auth.AuthDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
+@Tag(name = "Auth", description = "Аутентификация пользователей")
+public class AuthController {
+
+    private final AuthService authService;
+
+    @Operation(summary = "Зарегистрироваться", description = "Создаёт нового пользователя и возвращает JWT-токен")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Пользователь зарегистрирован"),
+            @ApiResponse(responseCode = "400", description = "Некорректный запрос"),
+            @ApiResponse(responseCode = "409", description = "Пользователь уже существует")
+    })
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AuthDto.LoginResponse register(@Valid @RequestBody AuthDto.RegisterRequest request) {
+        return authService.register(request);
+    }
+
+    @Operation(summary = "Войти в систему", description = "Возвращает JWT-токен для авторизации")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Успешная авторизация"),
+            @ApiResponse(responseCode = "400", description = "Некорректный запрос"),
+            @ApiResponse(responseCode = "401", description = "Неверный телефон или пароль")
+    })
+    @PostMapping("/login")
+    public AuthDto.LoginResponse login(@Valid @RequestBody AuthDto.LoginRequest request) {
+        return authService.login(request);
+    }
+}
