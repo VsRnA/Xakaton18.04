@@ -685,13 +685,13 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(game_prize_awarded_points_total{application=~\"$app\"}[$__range]))",
-          "legendFormat": "prize awarded",
+          "expr": "sum(rate(game_prize_awarded_points_total{application=~\"$app\"}[5m])) * 60",
+          "legendFormat": "prize awarded (pts/min)",
           "refId": "A"
         },
         {
-          "expr": "sum(increase(game_system_revenue_points_total{application=~\"$app\"}[$__range]))",
-          "legendFormat": "system revenue",
+          "expr": "sum(rate(game_system_revenue_points_total{application=~\"$app\"}[5m])) * 60",
+          "legendFormat": "system revenue (pts/min)",
           "refId": "B"
         }
       ],
@@ -707,7 +707,8 @@
       "options": {
         "legend": {
           "calcs": [
-            "sum"
+            "mean",
+            "max"
           ],
           "displayMode": "table",
           "placement": "bottom"
