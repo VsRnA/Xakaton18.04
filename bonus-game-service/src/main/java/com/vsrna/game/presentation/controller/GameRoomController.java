@@ -11,6 +11,7 @@ import com.vsrna.game.domain.gameroom.GameRoomQuery;
 import com.vsrna.game.domain.gameroom.GameRoomStatus;
 import com.vsrna.game.presentation.dto.gameroom.GameRoomDto;
 import com.vsrna.game.presentation.filter.AuthTokenFilter;
+import com.vsrna.game.presentation.ratelimit.JoinRateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,6 +33,7 @@ import java.util.Collection;
 public class GameRoomController {
 
     private final GameRoomService gameRoomService;
+    private final JoinRateLimiter joinRateLimiter;
 
     @Operation(summary = "Создать комнату (ADMIN)",
             description = """
@@ -188,6 +190,7 @@ public class GameRoomController {
     public GameRoomDto.JoinRoomResponse joinRoom(@PathVariable UUID roomId,
                                                  HttpServletRequest httpRequest) {
         UUID userId = requireAuth(httpRequest);
+        joinRateLimiter.checkAndRecord(userId);
         String displayName = (String) httpRequest.getAttribute(AuthTokenFilter.USERNAME_ATTR);
         GameRoomDetails details = gameRoomService.joinRoom(roomId, userId, displayName);
         Instant waitTimerExpiresAt = details.room().getWaitTimerExpiresAt();

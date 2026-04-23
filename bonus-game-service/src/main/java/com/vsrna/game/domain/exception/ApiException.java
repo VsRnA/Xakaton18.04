@@ -17,7 +17,8 @@ public class ApiException extends RuntimeException {
         ERR_CLIENT_ENTITY_ALREADY_EXIST,
         ERR_CLIENT_ENTITY_NOT_FOUND,
         ERR_CLIENT_INSUFFICIENT_BALANCE,
-        ERR_CLIENT_UNPROCESSABLE
+        ERR_CLIENT_UNPROCESSABLE,
+        ERR_CLIENT_RATE_LIMITED
     }
 
     private final String guid;
@@ -83,5 +84,9 @@ public class ApiException extends RuntimeException {
 
     public static ApiException unprocessable(String message, Map<String, Object> details) {
         return new ApiException(message, ErrorCode.ERR_CLIENT_UNPROCESSABLE, 422, details);
+    }
+
+    public static ApiException tooManyRequests(String message) {
+        return new ApiException(message, ErrorCode.ERR_CLIENT_RATE_LIMITED, 429);
     }
 }

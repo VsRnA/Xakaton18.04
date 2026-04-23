@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record GameFinishedEvent(
+        int version,
         UUID roomId,
         UUID winnerId,
         boolean winnerIsBot,
@@ -11,4 +12,6 @@ public record GameFinishedEvent(
         BigDecimal prizeAwarded,
         BigDecimal systemRevenue,
         String winCriteria
-) {}
+) {
+    public static final int CURRENT_VERSION = 1;
+}

@@ -48,6 +48,9 @@ public final class GameErrorMessages {
         return "Barrel " + barrelId + " does not belong to this round";
     }
 
+    // === Rate Limiting ===
+    public static final String JOIN_RATE_LIMITED = "Too many join attempts. Please wait before trying again.";
+
     // === Prize ===
     public static String noWinnerFound(UUID roomId) {
         return "No winner found for room " + roomId;
