@@ -17,12 +17,12 @@ public class UserBalanceRepositoryAdapter implements UserBalanceRepository {
 
     @Override
     public UserBalance create(UserBalance userBalance) {
-        return jpa.save(userBalance);
+        return toDomain(jpa.save(toJpa(userBalance)));
     }
 
     @Override
     public Optional<UserBalance> find(UserBalanceQuery query) {
-        return jpa.findById(query.userId());
+        return jpa.findById(query.userId()).map(this::toDomain);
     }
 
     @Override
@@ -34,7 +34,8 @@ public class UserBalanceRepositoryAdapter implements UserBalanceRepository {
     @Override
     @Transactional
     public UserBalance update(UserBalanceQuery query, UserBalancePatch patch) {
-        UserBalance balance = get(query);
+        UserBalanceJpa balance = jpa.findById(query.userId()).orElseThrow(() ->
+                ApiException.notFound("UserBalance", query.userId().toString()));
         Instant now = Instant.now();
         int rows;
 
@@ -58,6 +59,24 @@ public class UserBalanceRepositoryAdapter implements UserBalanceRepository {
         }
 
         return get(query);
+    }
+
+    private UserBalance toDomain(UserBalanceJpa j) {
+        UserBalance b = new UserBalance();
+        b.setUserId(j.getUserId());
+        b.setAvailable(j.getAvailable());
+        b.setReserved(j.getReserved());
+        b.setUpdatedAt(j.getUpdatedAt());
+        return b;
+    }
+
+    private UserBalanceJpa toJpa(UserBalance b) {
+        UserBalanceJpa j = new UserBalanceJpa();
+        j.setUserId(b.getUserId());
+        j.setAvailable(b.getAvailable());
+        j.setReserved(b.getReserved());
+        j.setUpdatedAt(b.getUpdatedAt());
+        return j;
     }
 
     private void assertUpdated(int rows, String message) {

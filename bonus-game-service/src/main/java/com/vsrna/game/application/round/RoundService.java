@@ -1,5 +1,6 @@
 package com.vsrna.game.application.round;
 
+import com.vsrna.game.application.round.history.GameHistoryDetails;
 import com.vsrna.game.domain.barrel.Barrel;
 import com.vsrna.game.domain.history.GameHistory;
 

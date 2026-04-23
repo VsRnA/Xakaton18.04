@@ -1,9 +1,10 @@
 package com.vsrna.game.application.prize;
 
 import com.vsrna.game.application.gameevent.GameEventLogService;
+import com.vsrna.game.application.metrics.GameMetrics;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
-import com.vsrna.game.application.round.RoundScoringUtils;
+import com.vsrna.game.application.round.scoring.RoundScoringUtils;
 import com.vsrna.game.domain.exception.ApiException;
 import com.vsrna.game.domain.exception.GameErrorMessages;
 import com.vsrna.game.domain.gameroom.*;
@@ -38,6 +39,7 @@ public class PrizeServiceImpl implements PrizeService {
     private final GameEventPort gameEventPort;
     private final GameNotifierPort notifierPort;
     private final GameEventLogService gameEventLogService;
+    private final GameMetrics gameMetrics;
 
     @Override
     @Transactional
@@ -77,7 +79,7 @@ public class PrizeServiceImpl implements PrizeService {
             systemRevenue = prizePool;
         }
 
-        entries.sort(Comparator.comparingInt(e -> e.getRankInRound() != null ? e.getRankInRound() : 99));
+        entries.sort(Comparator.comparingInt(entry -> entry.getRankInRound() != null ? entry.getRankInRound() : 99));
         String winCriteria = RoundScoringUtils.determineWinCriteria(entries);
 
         List<GameParticipant> allParticipants = participantRepository.list(GameParticipantQuery.byRoom(roomId));
@@ -139,6 +141,10 @@ public class PrizeServiceImpl implements PrizeService {
                 "prize", prizeAwarded,
                 "criteria", winCriteria
         ));
+
+        gameMetrics.recordRoomFinished(winner.isBot());
+        gameMetrics.prizeAwardedPoints.increment(prizeAwarded.doubleValue());
+        gameMetrics.systemRevenuePoints.increment(systemRevenue.doubleValue());
 
         log.info("Room {} finished. Winner: {}, prize: {}", roomId, winner.getId(), prizeAwarded);
 

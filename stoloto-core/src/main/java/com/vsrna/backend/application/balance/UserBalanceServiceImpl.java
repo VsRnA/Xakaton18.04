@@ -14,6 +14,18 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserBalanceServiceImpl implements UserBalanceService {
 
+    private static final String IDEMPOTENCY_RESERVE         = "RESERVE";
+    private static final String IDEMPOTENCY_RELEASE         = "RELEASE";
+    private static final String IDEMPOTENCY_DEDUCT_RESERVED = "DEDUCT_RESERVED";
+    private static final String IDEMPOTENCY_BOOST_DEDUCT    = "BOOST_DEDUCT";
+    private static final String IDEMPOTENCY_AWARD           = "AWARD";
+
+    private static final String TX_DESC_RESERVE         = "Entry fee reserved";
+    private static final String TX_DESC_RELEASE         = "Entry fee returned to available";
+    private static final String TX_DESC_DEDUCT_RESERVED = "Entry fee deducted";
+    private static final String TX_DESC_BOOST_PURCHASE  = "Boost purchased";
+    private static final String TX_DESC_PRIZE_AWARDED   = "Prize awarded";
+
     private final UserBalanceRepository balanceRepository;
     private final PointTransactionRepository transactionRepository;
 
@@ -26,55 +38,55 @@ public class UserBalanceServiceImpl implements UserBalanceService {
     @Override
     @Transactional
     public void reservePoints(UUID userId, BigDecimal amount, UUID gameRoomId) {
-        String key = idempotencyKey("RESERVE", userId, gameRoomId);
+        String key = idempotencyKey(IDEMPOTENCY_RESERVE, userId, gameRoomId);
         if (isDuplicate(key)) return;
         balanceRepository.update(UserBalanceQuery.byUser(userId), UserBalancePatch.reserve(amount));
         transactionRepository.create(new PointTransaction(
-                userId, TransactionType.RESERVE, amount, gameRoomId, "Entry fee reserved", key));
+                userId, TransactionType.RESERVE, amount, gameRoomId, TX_DESC_RESERVE, key));
         log.info("Points reserved: userId={}, amount={}, roomId={}", userId, amount, gameRoomId);
     }
 
     @Override
     @Transactional
     public void returnReservedPoints(UUID userId, BigDecimal amount, UUID gameRoomId) {
-        String key = idempotencyKey("RETURN", userId, gameRoomId);
+        String key = idempotencyKey(IDEMPOTENCY_RELEASE, userId, gameRoomId);
         if (isDuplicate(key)) return;
         balanceRepository.update(UserBalanceQuery.byUser(userId), UserBalancePatch.release(amount));
         transactionRepository.create(new PointTransaction(
-                userId, TransactionType.DEDUCT, amount, gameRoomId, "Entry fee returned to available", key));
+                userId, TransactionType.DEDUCT, amount, gameRoomId, TX_DESC_RELEASE, key));
         log.info("Points returned: userId={}, amount={}, roomId={}", userId, amount, gameRoomId);
     }
 
     @Override
     @Transactional
     public void deductReserved(UUID userId, BigDecimal amount, UUID gameRoomId) {
-        String key = idempotencyKey("DEDUCT_RESERVED", userId, gameRoomId);
+        String key = idempotencyKey(IDEMPOTENCY_DEDUCT_RESERVED, userId, gameRoomId);
         if (isDuplicate(key)) return;
         balanceRepository.update(UserBalanceQuery.byUser(userId), UserBalancePatch.deduct(amount));
         transactionRepository.create(new PointTransaction(
-                userId, TransactionType.DEDUCT, amount, gameRoomId, "Entry fee deducted", key));
+                userId, TransactionType.DEDUCT, amount, gameRoomId, TX_DESC_DEDUCT_RESERVED, key));
         log.info("Reserved points deducted: userId={}, amount={}, roomId={}", userId, amount, gameRoomId);
     }
 
     @Override
     @Transactional
     public void deductPoints(UUID userId, BigDecimal amount, UUID gameRoomId) {
-        String key = idempotencyKey("BOOST_DEDUCT", userId, gameRoomId);
+        String key = idempotencyKey(IDEMPOTENCY_BOOST_DEDUCT, userId, gameRoomId);
         if (isDuplicate(key)) return;
         balanceRepository.update(UserBalanceQuery.byUser(userId), UserBalancePatch.directDeduct(amount));
         transactionRepository.create(new PointTransaction(
-                userId, TransactionType.BOOST_PURCHASE, amount, gameRoomId, "Boost purchased", key));
+                userId, TransactionType.BOOST_PURCHASE, amount, gameRoomId, TX_DESC_BOOST_PURCHASE, key));
         log.info("Boost purchased: userId={}, amount={}, roomId={}", userId, amount, gameRoomId);
     }
 
     @Override
     @Transactional
     public void creditPoints(UUID userId, BigDecimal amount, UUID gameRoomId) {
-        String key = idempotencyKey("AWARD", userId, gameRoomId);
+        String key = idempotencyKey(IDEMPOTENCY_AWARD, userId, gameRoomId);
         if (isDuplicate(key)) return;
         balanceRepository.update(UserBalanceQuery.byUser(userId), UserBalancePatch.credit(amount));
         transactionRepository.create(new PointTransaction(
-                userId, TransactionType.AWARD, amount, gameRoomId, "Prize awarded", key));
+                userId, TransactionType.AWARD, amount, gameRoomId, TX_DESC_PRIZE_AWARDED, key));
         log.info("Prize credited: userId={}, amount={}, roomId={}", userId, amount, gameRoomId);
     }
 

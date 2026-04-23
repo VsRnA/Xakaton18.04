@@ -1,5 +1,6 @@
 package com.vsrna.backend.application.auth;
 
+import com.vsrna.backend.application.user.CreateUserRequest;
 import com.vsrna.backend.application.user.UserService;
 import com.vsrna.backend.domain.user.User;
 import com.vsrna.backend.infrastructure.security.JwtUtils;
@@ -30,7 +31,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthDto.LoginResponse register(AuthDto.RegisterRequest request) {
-        User user = userService.createUser(new UserDto.CreateUserRequest(
+        User user = userService.createUser(new CreateUserRequest(
                 request.phone(),
                 request.password(),
                 null,

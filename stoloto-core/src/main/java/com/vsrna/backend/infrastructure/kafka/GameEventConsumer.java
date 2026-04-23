@@ -1,6 +1,7 @@
 package com.vsrna.backend.infrastructure.kafka;
 
 import com.vsrna.backend.application.balance.UserBalanceService;
+import com.vsrna.backend.domain.balance.BalanceCommandTypes;
 import com.vsrna.backend.infrastructure.kafka.event.BalanceCommandEvent;
 import com.vsrna.backend.infrastructure.kafka.event.GameEntryReservedEvent;
 import com.vsrna.backend.infrastructure.kafka.event.GameFinishedEvent;
@@ -37,18 +38,16 @@ public class GameEventConsumer {
                 event.commandType(), event.userId(), event.amount(), event.roomId());
         try {
             switch (event.commandType()) {
-                case "RESERVE"          -> userBalanceService.reservePoints(event.userId(), event.amount(), event.roomId());
-                case "RELEASE"          -> userBalanceService.returnReservedPoints(event.userId(), event.amount(), event.roomId());
-                case "AWARD"            -> userBalanceService.creditPoints(event.userId(), event.amount(), event.roomId());
-                case "DEDUCT"           -> userBalanceService.deductPoints(event.userId(), event.amount(), event.roomId());
-                case "DEDUCT_RESERVED"  -> userBalanceService.deductReserved(event.userId(), event.amount(), event.roomId());
+                case BalanceCommandTypes.RESERVE         -> userBalanceService.reservePoints(event.userId(), event.amount(), event.roomId());
+                case BalanceCommandTypes.RELEASE         -> userBalanceService.returnReservedPoints(event.userId(), event.amount(), event.roomId());
+                case BalanceCommandTypes.AWARD           -> userBalanceService.creditPoints(event.userId(), event.amount(), event.roomId());
+                case BalanceCommandTypes.DEDUCT          -> userBalanceService.deductPoints(event.userId(), event.amount(), event.roomId());
+                case BalanceCommandTypes.DEDUCT_RESERVED -> userBalanceService.deductReserved(event.userId(), event.amount(), event.roomId());
                 default -> log.warn("Unknown balance command type: {}", event.commandType());
             }
         } catch (Exception e) {
             log.error("Failed to process balance command type={}, userId={}, roomId={}: {}",
                     event.commandType(), event.userId(), event.roomId(), e.getMessage(), e);
-            // Idempotency in UserBalanceService prevents double-processing on retry.
-            // Kafka offset is NOT committed on exception — message will be retried automatically.
             throw e;
         }
     }

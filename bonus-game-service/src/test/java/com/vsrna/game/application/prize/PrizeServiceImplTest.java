@@ -1,5 +1,6 @@
 package com.vsrna.game.application.prize;
 
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.domain.gameroom.GameRoomConfigRepository;
@@ -40,6 +41,7 @@ class PrizeServiceImplTest {
     @Mock GameHistoryRepository gameHistoryRepository;
     @Mock GameEventPort gameEventPort;
     @Mock GameNotifierPort notifierPort;
+    @Mock GameEventLogService gameEventLogService;
 
     @InjectMocks
     PrizeServiceImpl prizeService;
@@ -89,7 +91,7 @@ class PrizeServiceImplTest {
 
         prizeService.distributePrize(roomId);
 
-        verify(gameEventPort).publishBalanceRelease(eq(loserId), eq(loser.getReservedPoints()), eq(roomId));
+        verify(gameEventPort).publishBalanceDeductReserved(eq(loserId), eq(loser.getReservedPoints()), eq(roomId));
         verify(gameEventPort, never()).publishBalanceRelease(eq(winnerId), any(), any());
     }
 

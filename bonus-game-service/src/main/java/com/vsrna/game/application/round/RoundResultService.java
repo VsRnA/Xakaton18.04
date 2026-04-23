@@ -1,5 +1,7 @@
 package com.vsrna.game.application.round;
 
+import com.vsrna.game.application.round.history.GameHistoryDetails;
+import com.vsrna.game.application.round.history.ParticipantHistoryEntry;
 import com.vsrna.game.domain.history.GameHistory;
 import com.vsrna.game.domain.history.GameHistoryQuery;
 import com.vsrna.game.domain.history.GameHistoryRepository;
@@ -37,7 +39,7 @@ public class RoundResultService {
 
         Map<UUID, GameParticipant> participantMap = participantRepository
                 .list(GameParticipantQuery.byRoom(roomId)).stream()
-                .collect(Collectors.toMap(GameParticipant::getId, p -> p));
+                .collect(Collectors.toMap(GameParticipant::getId, participant -> participant));
 
         List<RoundResultDetails.ParticipantScore> scores = entries.stream()
                 .map(entry -> {
@@ -83,27 +85,27 @@ public class RoundResultService {
         }
 
         Map<UUID, ParticipantRoundEntry> entryByParticipant = entries.stream()
-                .collect(Collectors.toMap(ParticipantRoundEntry::getParticipantId, e -> e));
+                .collect(Collectors.toMap(ParticipantRoundEntry::getParticipantId, entry -> entry));
 
         UUID winnerParticipantId = history.getWinnerUserId() != null
                 ? participants.stream()
-                        .filter(p -> history.getWinnerUserId().equals(p.getUserId()))
+                        .filter(participant -> history.getWinnerUserId().equals(participant.getUserId()))
                         .map(GameParticipant::getId)
                         .findFirst().orElse(null)
                 : null;
 
         List<ParticipantHistoryEntry> historyEntries = participants.stream()
-                .map(p -> {
-                    ParticipantRoundEntry entry = entryByParticipant.get(p.getId());
+                .map(participant -> {
+                    ParticipantRoundEntry roundEntry = entryByParticipant.get(participant.getId());
                     return new ParticipantHistoryEntry(
-                            p.getId(),
-                            p.getUserId(),
-                            p.isBot(),
-                            p.getDisplayName(),
-                            entry != null && entry.isBoostPurchased(),
-                            entry != null ? entry.getTotalScore() : null,
-                            entry != null ? entry.getRankInRound() : null,
-                            p.getId().equals(winnerParticipantId)
+                            participant.getId(),
+                            participant.getUserId(),
+                            participant.isBot(),
+                            participant.getDisplayName(),
+                            roundEntry != null && roundEntry.isBoostPurchased(),
+                            roundEntry != null ? roundEntry.getTotalScore() : null,
+                            roundEntry != null ? roundEntry.getRankInRound() : null,
+                            participant.getId().equals(winnerParticipantId)
                     );
                 })
                 .toList();

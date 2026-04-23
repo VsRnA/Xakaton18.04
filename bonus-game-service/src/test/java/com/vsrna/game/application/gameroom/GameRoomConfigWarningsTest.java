@@ -1,5 +1,8 @@
 package com.vsrna.game.application.gameroom;
 
+import com.vsrna.game.application.gameroom.config.ConfigEvaluationResult;
+import com.vsrna.game.application.gameroom.config.ConfigWarning;
+import com.vsrna.game.application.gameroom.config.GameRoomConfigValidator;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

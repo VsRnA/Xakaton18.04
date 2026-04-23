@@ -1,6 +1,8 @@
 package com.vsrna.game.application.round;
 
 import com.vsrna.game.application.gameevent.GameEventLogService;
+import com.vsrna.game.application.metrics.GameMetrics;
+import com.vsrna.game.application.round.scoring.RoundConstants;
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.domain.exception.ApiException;
@@ -38,6 +40,7 @@ public class BoostService {
     private final BalancePort balancePort;
     private final GameEventPort gameEventPort;
     private final GameEventLogService gameEventLogService;
+    private final GameMetrics gameMetrics;
 
     @Transactional
     public void purchaseBoost(UUID roomId, UUID userId, int roundNumber) {
@@ -46,7 +49,6 @@ public class BoostService {
             throw ApiException.badRequest(GameErrorMessages.BOOST_NOT_ENABLED);
         }
 
-        // Check balance before any DB writes — fail fast if insufficient funds
         BigDecimal available = balancePort.getAvailableBalance(userId);
         if (available.compareTo(config.getBoostCostAmount()) < 0) {
             throw ApiException.insufficientBalance(
@@ -64,14 +66,12 @@ public class BoostService {
         var participant = participantRepository.get(GameParticipantQuery.byRoomAndUser(roomId, userId));
         var roundResult = roundResultRepository.get(RoundResultQuery.byRoomAndRound(roomId, roundNumber));
 
-        // Idempotency: prevent double-purchase in the current round
         var existingEntry = entryRepository.find(
                 ParticipantRoundEntryQuery.byRoundResultAndParticipant(roundResult.getId(), participant.getId()));
         if (existingEntry.isPresent() && existingEntry.get().isBoostPurchased()) {
             throw ApiException.badRequest(GameErrorMessages.BOOST_ALREADY_PURCHASED_THIS_ROUND);
         }
 
-        // Prevent boost in round 2 if already used in round 1
         if (roundNumber == RoundConstants.ROUND_2) {
             var round1Result = roundResultRepository.find(RoundResultQuery.byRoomAndRound(roomId, RoundConstants.ROUND_1));
             if (round1Result.isPresent()) {
@@ -95,8 +95,8 @@ public class BoostService {
                 }
         );
 
-        // Write deduct command atomically with entry update — guaranteed delivery via outbox
         gameEventPort.publishBalanceDeduct(userId, config.getBoostCostAmount(), roomId);
+        gameMetrics.boostsPurchased.increment();
         gameEventLogService.log(roomId, "BOOST_PURCHASED", Map.of(
                 "userId", userId.toString(),
                 "round", roundNumber,

@@ -1,5 +1,6 @@
 package com.vsrna.game.infrastructure.scheduler;
 
+import com.vsrna.game.application.port.GamePhase;
 import com.vsrna.game.application.port.GameSchedulerPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,61 +35,61 @@ public class GameScheduler implements GameSchedulerPort {
     private int finalistsReadyTimeoutSeconds;
 
     public Instant scheduleWaitTimerExpiry(UUID roomId) {
-        Instant expiresAt = Instant.now().plusSeconds(waitTimerSeconds);
-        schedule(FillWithBotsJob.class, "fill-bots-" + roomId,
-                new JobDataMap() {{ put("roomId", roomId.toString()); }},
-                waitTimerSeconds);
-        return expiresAt;
+        JobDataMap data = new JobDataMap();
+        data.put("roomId", roomId.toString());
+        return schedule(FillWithBotsJob.class, GamePhase.FILL_BOTS.jobKey(roomId), data, waitTimerSeconds);
     }
 
-    public void scheduleRoundEnd(UUID roomId, int roundNumber) {
+    public Instant scheduleRoundEnd(UUID roomId, int roundNumber) {
         JobDataMap data = new JobDataMap();
         data.put("roomId", roomId.toString());
         data.put("roundNumber", roundNumber);
-        schedule(ResolveRoundJob.class, "resolve-round-" + roomId + "-" + roundNumber, data, roundDurationSeconds);
+        return schedule(ResolveRoundJob.class, GamePhase.RESOLVE_ROUND.jobKey(roomId, roundNumber), data, roundDurationSeconds);
     }
 
-    public void scheduleBoostDecisionEnd(UUID roomId, int roundNumber) {
+    public Instant scheduleBoostDecisionEnd(UUID roomId, int roundNumber) {
         JobDataMap data = new JobDataMap();
         data.put("roomId", roomId.toString());
         data.put("roundNumber", roundNumber);
-        schedule(BoostWindowStartJob.class, "boost-decision-end-" + roomId + "-" + roundNumber, data, boostDecisionSeconds);
+        return schedule(BoostWindowStartJob.class, GamePhase.BOOST_DECISION_END.jobKey(roomId, roundNumber), data, boostDecisionSeconds);
     }
 
-    public void scheduleBoostWindowEnd(UUID roomId, int roundNumber) {
+    public Instant scheduleBoostWindowEnd(UUID roomId, int roundNumber) {
         JobDataMap data = new JobDataMap();
         data.put("roomId", roomId.toString());
         data.put("roundNumber", roundNumber);
-        schedule(FinalizeRoundJob.class, "finalize-round-" + roomId + "-" + roundNumber, data, boostWindowSeconds);
+        return schedule(FinalizeRoundJob.class, GamePhase.FINALIZE_ROUND.jobKey(roomId, roundNumber), data, boostWindowSeconds);
     }
 
     public void scheduleFinalistsReadyTimeout(UUID roomId) {
         JobDataMap data = new JobDataMap();
         data.put("roomId", roomId.toString());
-        schedule(StartRound2Job.class, "start-round2-" + roomId, data, finalistsReadyTimeoutSeconds);
+        schedule(StartRound2Job.class, GamePhase.START_ROUND2.jobKey(roomId), data, finalistsReadyTimeoutSeconds);
     }
 
     public void scheduleRoomOpen(UUID roomId, Instant startAt) {
         JobDataMap data = new JobDataMap();
         data.put("roomId", roomId.toString());
-        scheduleAt(OpenScheduledRoomJob.class, "open-room-" + roomId, data, startAt);
+        scheduleAt(OpenScheduledRoomJob.class, GamePhase.OPEN_ROOM.jobKey(roomId), data, startAt);
     }
 
-    public void cancel(UUID roomId, String phase) {
-        JobKey key = JobKey.jobKey(phase + "-" + roomId);
+    public void cancel(UUID roomId, GamePhase phase) {
+        JobKey key = JobKey.jobKey(phase.jobKey(roomId));
         try {
             if (quartzScheduler.checkExists(key)) {
                 quartzScheduler.deleteJob(key);
                 log.debug("Cancelled scheduler job: {}", key);
             }
-        } catch (SchedulerException e) {
-            log.warn("Failed to cancel job {}: {}", key, e.getMessage());
+        } catch (SchedulerException ex) {
+            log.warn("Failed to cancel job {}: {}", key, ex.getMessage());
         }
     }
 
-    private void schedule(Class<? extends Job> jobClass, String jobName,
-                          JobDataMap data, int delaySeconds) {
-        scheduleAt(jobClass, jobName, data, Instant.now().plusSeconds(delaySeconds));
+    private Instant schedule(Class<? extends Job> jobClass, String jobName,
+                             JobDataMap data, int delaySeconds) {
+        Instant expiresAt = Instant.now().plusSeconds(delaySeconds);
+        scheduleAt(jobClass, jobName, data, expiresAt);
+        return expiresAt;
     }
 
     private void scheduleAt(Class<? extends Job> jobClass, String jobName,
@@ -109,8 +110,8 @@ public class GameScheduler implements GameSchedulerPort {
                     .build();
             quartzScheduler.scheduleJob(job, trigger);
             log.debug("Scheduled job {} at {}", jobName, startAt);
-        } catch (SchedulerException e) {
-            log.error("Failed to schedule job {}: {}", jobName, e.getMessage(), e);
+        } catch (SchedulerException ex) {
+            log.error("Failed to schedule job {}: {}", jobName, ex.getMessage(), ex);
         }
     }
 }

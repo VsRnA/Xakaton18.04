@@ -17,9 +17,9 @@ public final class MdcContext implements AutoCloseable {
 
     public static MdcContext of(String... keysAndValues) {
         MdcContext ctx = new MdcContext();
-        for (int i = 0; i + 1 < keysAndValues.length; i += 2) {
-            String key = keysAndValues[i];
-            String value = keysAndValues[i + 1];
+        for (int pairIndex = 0; pairIndex + 1 < keysAndValues.length; pairIndex += 2) {
+            String key = keysAndValues[pairIndex];
+            String value = keysAndValues[pairIndex + 1];
             if (value != null) {
                 MDC.put(key, value);
                 ctx.keys.add(key);

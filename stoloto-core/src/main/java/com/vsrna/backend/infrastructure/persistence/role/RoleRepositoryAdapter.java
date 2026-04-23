@@ -17,17 +17,33 @@ public class RoleRepositoryAdapter implements RoleRepository {
 
     @Override
     public Role create(Role role) {
-        return jpa.save(role);
+        return toDomain(jpa.save(toJpa(role)));
     }
 
     @Override
     public Optional<Role> find(RoleQuery query) {
-        return jpa.findByQuery(query.guid(), query.keyword());
+        return jpa.findByQuery(query.guid(), query.keyword()).map(this::toDomain);
     }
 
     @Override
     public Role get(RoleQuery query) {
         return find(query).orElseThrow(() -> ApiException.notFound("Role", buildDetail(query)));
+    }
+
+    public Role toDomain(RoleJpa j) {
+        return new Role(j.getGuid(), j.getKeyword(), j.getName());
+    }
+
+    RoleJpa toJpa(Role role) {
+        RoleJpa j = new RoleJpa();
+        j.setGuid(role.getGuid());
+        j.setKeyword(role.getKeyword());
+        j.setName(role.getName());
+        return j;
+    }
+
+    public Optional<RoleJpa> findJpaByKeyword(String keyword) {
+        return jpa.findByQuery(null, keyword);
     }
 
     private String buildDetail(RoleQuery query) {

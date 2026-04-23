@@ -46,8 +46,8 @@ public class RngServiceImpl implements RngPort {
         byte[] ctxEntropy = sha256(ctx.getBytes(StandardCharsets.UTF_8));
 
         byte[] seed = new byte[32];
-        for (int i = 0; i < 32; i++) {
-            seed[i] = (byte) (osEntropy[i] ^ timeEntropy[i % timeEntropy.length] ^ ctxEntropy[i]);
+        for (int byteIndex = 0; byteIndex < 32; byteIndex++) {
+            seed[byteIndex] = (byte) (osEntropy[byteIndex] ^ timeEntropy[byteIndex % timeEntropy.length] ^ ctxEntropy[byteIndex]);
         }
         return seed;
     }
@@ -57,8 +57,8 @@ public class RngServiceImpl implements RngPort {
     private List<BigDecimal> generateWeights(byte[] seed, int count) {
         List<BigDecimal> weights = new ArrayList<>(count);
         byte[] current = seed;
-        for (int i = 0; i < count; i++) {
-            current = sha256(concat(current, intToBytes(i)));
+        for (int weightIndex = 0; weightIndex < count; weightIndex++) {
+            current = sha256(concat(current, intToBytes(weightIndex)));
             int raw = readInt(current, 0);
             int intWeight = Math.floorMod(raw, WEIGHT_RANGE_SIZE) + WEIGHT_MIN;
             weights.add(BigDecimal.valueOf(intWeight));
@@ -66,15 +66,15 @@ public class RngServiceImpl implements RngPort {
         return weights;
     }
 
-    private byte[] concat(byte[] a, byte[] b) {
-        byte[] result = new byte[a.length + b.length];
-        System.arraycopy(a, 0, result, 0, a.length);
-        System.arraycopy(b, 0, result, a.length, b.length);
+    private byte[] concat(byte[] first, byte[] second) {
+        byte[] result = new byte[first.length + second.length];
+        System.arraycopy(first, 0, result, 0, first.length);
+        System.arraycopy(second, 0, result, first.length, second.length);
         return result;
     }
 
-    private byte[] intToBytes(int i) {
-        return new byte[]{(byte) (i >> 24), (byte) (i >> 16), (byte) (i >> 8), (byte) i};
+    private byte[] intToBytes(int value) {
+        return new byte[]{(byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) value};
     }
 
     private int readInt(byte[] buf, int offset) {
@@ -82,13 +82,13 @@ public class RngServiceImpl implements RngPort {
                 | ((buf[offset + 2] & 0xFF) << 8) | (buf[offset + 3] & 0xFF);
     }
 
-    private byte[] longToBytes(long a, long b) {
+    private byte[] longToBytes(long highBits, long lowBits) {
         byte[] buf = new byte[16];
-        for (int i = 7; i >= 0; i--) {
-            buf[i] = (byte) (a & 0xFF);
-            buf[i + 8] = (byte) (b & 0xFF);
-            a >>= 8;
-            b >>= 8;
+        for (int byteIndex = 7; byteIndex >= 0; byteIndex--) {
+            buf[byteIndex] = (byte) (highBits & 0xFF);
+            buf[byteIndex + 8] = (byte) (lowBits & 0xFF);
+            highBits >>= 8;
+            lowBits >>= 8;
         }
         return buf;
     }
@@ -96,8 +96,8 @@ public class RngServiceImpl implements RngPort {
     private byte[] sha256(byte[] input) {
         try {
             return MessageDigest.getInstance("SHA-256").digest(input);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 not available", ex);
         }
     }
 

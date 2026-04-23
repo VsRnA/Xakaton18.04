@@ -92,7 +92,7 @@ public class AnalyticsDto {
                     Положительный — бот победил, система в плюсе.
                     Отрицательный — реальный игрок победил, система покрыла часть приза из вложений в ботов.""")
             BigDecimal systemBalance,
-            @Schema(description = "Критерий победы: HIGHEST_SCORE | TIEBREAK_SELECTION_COUNT | TIEBREAK_EARLIEST")
+            @Schema(description = "Критерий победы: SCORE | TIMESTAMP_TIEBREAK | DIRECT")
             String winCriteria,
             int realPlayersCount,
             int botCount,

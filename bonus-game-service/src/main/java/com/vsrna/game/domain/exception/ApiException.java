@@ -1,7 +1,6 @@
 package com.vsrna.game.domain.exception;
 
 import lombok.Getter;
-import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 import java.util.UUID;
@@ -23,50 +22,50 @@ public class ApiException extends RuntimeException {
 
     private final String guid;
     private final ErrorCode code;
-    private final HttpStatus status;
+    private final int httpStatus;
     private final Map<String, Object> details;
 
-    private ApiException(String message, ErrorCode code, HttpStatus status) {
+    private ApiException(String message, ErrorCode code, int httpStatus) {
         super(message);
         this.guid = UUID.randomUUID().toString();
         this.code = code;
-        this.status = status;
+        this.httpStatus = httpStatus;
         this.details = null;
     }
 
-    private ApiException(String message, ErrorCode code, HttpStatus status, Map<String, Object> details) {
+    private ApiException(String message, ErrorCode code, int httpStatus, Map<String, Object> details) {
         super(message);
         this.guid = UUID.randomUUID().toString();
         this.code = code;
-        this.status = status;
+        this.httpStatus = httpStatus;
         this.details = details;
     }
 
     public static ApiException internal(String message) {
-        return new ApiException(message, ErrorCode.ERR_APP, HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ApiException(message, ErrorCode.ERR_APP, 500);
     }
 
     public static ApiException badRequest(String message) {
-        return new ApiException(message, ErrorCode.ERR_CLIENT_BAD_REQUEST, HttpStatus.BAD_REQUEST);
+        return new ApiException(message, ErrorCode.ERR_CLIENT_BAD_REQUEST, 400);
     }
 
     public static ApiException validationError(String message) {
-        return new ApiException(message, ErrorCode.ERR_CLIENT_REQUEST_VALIDATION, HttpStatus.BAD_REQUEST);
+        return new ApiException(message, ErrorCode.ERR_CLIENT_REQUEST_VALIDATION, 400);
     }
 
     public static ApiException unauthorized(String message) {
-        return new ApiException(message, ErrorCode.ERR_CLIENT_AUTH, HttpStatus.UNAUTHORIZED);
+        return new ApiException(message, ErrorCode.ERR_CLIENT_AUTH, 401);
     }
 
     public static ApiException forbidden(String message) {
-        return new ApiException(message, ErrorCode.ERR_CLIENT_FORBIDDEN, HttpStatus.FORBIDDEN);
+        return new ApiException(message, ErrorCode.ERR_CLIENT_FORBIDDEN, 403);
     }
 
     public static ApiException alreadyExists(String entity, String detail) {
         return new ApiException(
                 String.format("Entity '%s' already exists. %s", entity, detail),
                 ErrorCode.ERR_CLIENT_ENTITY_ALREADY_EXIST,
-                HttpStatus.CONFLICT
+                409
         );
     }
 
@@ -74,17 +73,15 @@ public class ApiException extends RuntimeException {
         return new ApiException(
                 String.format("Entity '%s' not found. %s", entity, detail),
                 ErrorCode.ERR_CLIENT_ENTITY_NOT_FOUND,
-                HttpStatus.NOT_FOUND
+                404
         );
     }
 
     public static ApiException insufficientBalance(String message, Map<String, Object> details) {
-        return new ApiException(message, ErrorCode.ERR_CLIENT_INSUFFICIENT_BALANCE,
-                HttpStatus.PAYMENT_REQUIRED, details);
+        return new ApiException(message, ErrorCode.ERR_CLIENT_INSUFFICIENT_BALANCE, 402, details);
     }
 
     public static ApiException unprocessable(String message, Map<String, Object> details) {
-        return new ApiException(message, ErrorCode.ERR_CLIENT_UNPROCESSABLE,
-                HttpStatus.UNPROCESSABLE_ENTITY, details);
+        return new ApiException(message, ErrorCode.ERR_CLIENT_UNPROCESSABLE, 422, details);
     }
 }

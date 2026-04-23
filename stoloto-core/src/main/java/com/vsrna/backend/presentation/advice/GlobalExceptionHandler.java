@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
                 "code", ex.getCode(),
                 "message", ex.getMessage()
         );
-        return ResponseEntity.status(ex.getStatus()).body(Map.of("error", body));
+        return ResponseEntity.status(ex.getHttpStatus()).body(Map.of("error", body));
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
@@ -52,6 +52,6 @@ public class GlobalExceptionHandler {
                 "code", apiEx.getCode(),
                 "message", apiEx.getMessage()
         );
-        return ResponseEntity.status(apiEx.getStatus()).body(Map.of("error", body));
+        return ResponseEntity.status(apiEx.getHttpStatus()).body(Map.of("error", body));
     }
 }

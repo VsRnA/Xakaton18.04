@@ -1,6 +1,5 @@
 package com.vsrna.backend.infrastructure.persistence.balance;
 
-import com.vsrna.backend.domain.balance.UserBalance;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -10,7 +9,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-public interface UserBalanceJpaRepository extends JpaRepository<UserBalance, UUID> {
+public interface UserBalanceJpaRepository extends JpaRepository<UserBalanceJpa, UUID> {
 
     @Modifying
     @Query("""

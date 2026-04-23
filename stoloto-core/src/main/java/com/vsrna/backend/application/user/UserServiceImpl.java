@@ -10,13 +10,11 @@ import com.vsrna.backend.domain.user.User;
 import com.vsrna.backend.domain.user.UserQuery;
 import com.vsrna.backend.domain.user.UserRepository;
 import com.vsrna.backend.domain.user.UserRole;
-import com.vsrna.backend.presentation.dto.user.UserDto;
+import com.vsrna.backend.application.port.PasswordEncoderPort;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,18 +25,18 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserBalanceRepository balanceRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final PasswordEncoderPort passwordEncoder;
 
     @Override
     @Transactional
-    public User createUser(UserDto.CreateUserRequest request) {
+    public User createUser(CreateUserRequest request) {
         if (userRepository.find(UserQuery.byPhone(request.phone())).isPresent()) {
-            throw ApiException.alreadyExists("User", "phone already taken");
+            throw ApiException.alreadyExists("User", UserConstants.PHONE_ALREADY_TAKEN);
         }
 
         if (request.username() != null && !request.username().isBlank()
                 && userRepository.find(UserQuery.byUsername(request.username())).isPresent()) {
-            throw ApiException.alreadyExists("User", "username already taken");
+            throw ApiException.alreadyExists("User", UserConstants.USERNAME_ALREADY_TAKEN);
         }
 
         User user = new User(request.phone(), passwordEncoder.encode(request.password()));
@@ -54,7 +52,7 @@ public class UserServiceImpl implements UserService {
         user.getRoles().add(role);
 
         User created = userRepository.create(user);
-        balanceRepository.create(new UserBalance(created.getGuid(), BigDecimal.valueOf(1_000_000)));
+        balanceRepository.create(new UserBalance(created.getGuid(), UserConstants.INITIAL_BALANCE));
         return created;
     }
 
@@ -66,7 +64,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public User updateUser(UUID guid, UserDto.UpdateUserRequest request) {
+    public User updateUser(UUID guid, UpdateUserRequest request) {
         User user = userRepository.get(UserQuery.byId(guid));
         applyUsernameChange(user, request);
         applyPasswordChange(user, request);
@@ -75,28 +73,28 @@ public class UserServiceImpl implements UserService {
         return userRepository.create(user);
     }
 
-    private void applyUsernameChange(User user, UserDto.UpdateUserRequest request) {
+    private void applyUsernameChange(User user, UpdateUserRequest request) {
         if (request.username() == null || request.username().isBlank()) return;
         if (request.username().equals(user.getUsername())) return;
         if (userRepository.find(UserQuery.byUsername(request.username())).isPresent()) {
-            throw ApiException.alreadyExists("User", "username already taken");
+            throw ApiException.alreadyExists("User", UserConstants.USERNAME_ALREADY_TAKEN);
         }
         user.setUsername(request.username());
     }
 
-    private void applyPasswordChange(User user, UserDto.UpdateUserRequest request) {
+    private void applyPasswordChange(User user, UpdateUserRequest request) {
         if (request.password() != null && !request.password().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.password()));
         }
     }
 
-    private void applyNameFields(User user, UserDto.UpdateUserRequest request) {
+    private void applyNameFields(User user, UpdateUserRequest request) {
         if (request.name() != null) user.setName(request.name());
         if (request.lastName() != null) user.setLastName(request.lastName());
         if (request.patronymicName() != null) user.setPatronymicName(request.patronymicName());
     }
 
-    private void applyRoleChange(User user, UserDto.UpdateUserRequest request) {
+    private void applyRoleChange(User user, UpdateUserRequest request) {
         if (request.role() == null || request.role().isBlank()) return;
         String roleKeyword = UserRole.fromString(request.role()).getKeyword();
         Role role = roleRepository.get(RoleQuery.byKeyword(roleKeyword));

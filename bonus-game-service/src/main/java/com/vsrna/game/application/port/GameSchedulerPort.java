@@ -5,10 +5,10 @@ import java.util.UUID;
 
 public interface GameSchedulerPort {
     Instant scheduleWaitTimerExpiry(UUID roomId);
-    void scheduleRoundEnd(UUID roomId, int roundNumber);
-    void scheduleBoostDecisionEnd(UUID roomId, int roundNumber);
-    void scheduleBoostWindowEnd(UUID roomId, int roundNumber);
+    Instant scheduleRoundEnd(UUID roomId, int roundNumber);
+    Instant scheduleBoostDecisionEnd(UUID roomId, int roundNumber);
+    Instant scheduleBoostWindowEnd(UUID roomId, int roundNumber);
     void scheduleFinalistsReadyTimeout(UUID roomId);
     void scheduleRoomOpen(UUID roomId, Instant startAt);
-    void cancel(UUID roomId, String phase);
+    void cancel(UUID roomId, GamePhase phase);
 }

@@ -1,4 +1,4 @@
-package com.vsrna.game.application.gameroom;
+package com.vsrna.game.application.gameroom.config;
 
 import org.springframework.stereotype.Component;
 
@@ -20,14 +20,12 @@ public class GameRoomConfigValidator {
 
         List<ConfigWarning> warnings = new ArrayList<>();
 
-        // --- Бизнес-правила ---
-
-        if (payoutPct.compareTo(BigDecimal.valueOf(50)) < 0) {
+        if (payoutPct.compareTo(GameRoomConstants.MIN_PAYOUT_PERCENT) < 0) {
             warnings.add(ConfigWarning.warn("LOW_PLAYER_PAYOUT",
                     "Игрок получает менее 50% от взносов — комната будет непривлекательна для пользователей"));
         }
 
-        if (payoutPct.compareTo(BigDecimal.valueOf(95)) > 0) {
+        if (payoutPct.compareTo(GameRoomConstants.MAX_PAYOUT_PERCENT) > 0) {
             warnings.add(ConfigWarning.warn("LOW_ORGANIZER_REVENUE",
                     "Организатор получает менее 5% — комната невыгодна для платформы"));
         }
@@ -52,21 +50,25 @@ public class GameRoomConfigValidator {
                     "Комната на 2 игрока — буст не даёт статистического преимущества"));
         }
 
-        // --- Финансовые расчёты ---
         BigDecimal totalPool = entryFee.multiply(BigDecimal.valueOf(maxPlayers));
-        BigDecimal prizePool = totalPool.multiply(payoutPct).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal prizePool = totalPool.multiply(payoutPct)
+                .divide(GameRoomConstants.PERCENT_SCALE, 2, RoundingMode.HALF_UP);
         BigDecimal systemRevenue = totalPool.subtract(prizePool);
         double systemRevenuePct = totalPool.compareTo(BigDecimal.ZERO) > 0
-                ? systemRevenue.divide(totalPool, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).doubleValue()
+                ? systemRevenue
+                        .divide(totalPool, GameRoomConstants.PERCENT_DIVISION_SCALE, RoundingMode.HALF_UP)
+                        .multiply(GameRoomConstants.PERCENT_SCALE)
+                        .doubleValue()
                 : 0.0;
-        // Матожидание для одного игрока: prizePool / maxPlayers - entryFee
-        double expectedValue = prizePool.divide(BigDecimal.valueOf(maxPlayers), 2, RoundingMode.HALF_UP)
-                .subtract(entryFee).doubleValue();
+        double expectedValue = prizePool
+                .divide(BigDecimal.valueOf(maxPlayers), 2, RoundingMode.HALF_UP)
+                .subtract(entryFee)
+                .doubleValue();
 
-        // --- Оценка привлекательности ---
-        boolean hasError = warnings.stream().anyMatch(w -> "ERROR".equals(w.severity()));
-        boolean isHighPayout = payoutPct.compareTo(BigDecimal.valueOf(70)) >= 0;
-        boolean isBoostAffordable = !boostEnabled || boostCost.compareTo(entryFee.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP)) <= 0;
+        boolean hasError = warnings.stream().anyMatch(warning -> "ERROR".equals(warning.severity()));
+        boolean isHighPayout = payoutPct.compareTo(GameRoomConstants.HIGH_PAYOUT_THRESHOLD) >= 0;
+        boolean isBoostAffordable = !boostEnabled || boostCost.compareTo(
+                entryFee.divide(GameRoomConstants.BOOST_AFFORDABILITY_HALF, 2, RoundingMode.HALF_UP)) <= 0;
 
         String attractiveness;
         if (hasError) {

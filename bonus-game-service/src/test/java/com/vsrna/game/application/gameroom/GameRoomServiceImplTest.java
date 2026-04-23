@@ -1,10 +1,12 @@
 package com.vsrna.game.application.gameroom;
 
 import com.vsrna.game.application.bot.BotService;
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.port.GameSchedulerPort;
+import com.vsrna.game.application.gameroom.config.GameRoomConfigValidator;
 import com.vsrna.game.application.round.RoundService;
 import com.vsrna.game.domain.barrel.BarrelRepository;
 import com.vsrna.game.domain.exception.ApiException;
@@ -43,6 +45,7 @@ class GameRoomServiceImplTest {
     @Mock GameNotifierPort notifierPort;
     @Mock RoundService roundService;
     @Mock GameRoomConfigValidator configValidator;
+    @Mock GameEventLogService gameEventLogService;
 
     @InjectMocks
     GameRoomServiceImpl gameRoomService;

@@ -1,6 +1,6 @@
 package com.vsrna.game.application.bot;
 
-import com.vsrna.game.application.round.RoundConstants;
+import com.vsrna.game.application.round.scoring.RoundConstants;
 import com.vsrna.game.domain.barrel.*;
 import com.vsrna.game.domain.gameroom.GameRoomConfig;
 import com.vsrna.game.domain.gameroom.GameRoomConfigQuery;
@@ -30,14 +30,17 @@ public class BotServiceImpl implements BotService {
     private final ParticipantRoundEntryRepository entryRepository;
     private final ParticipantBarrelSelectionRepository selectionRepository;
 
+    private static final String BOT_NAME_FORMAT = "Бот %d";
+
     private final SecureRandom rng = new SecureRandom();
 
     @Override
     @Transactional
     public List<GameParticipant> createBotsForRoom(UUID roomId, int count, BigDecimal entryFeeAmount) {
         List<GameParticipant> bots = new ArrayList<>();
-        for (int i = 1; i <= count; i++) {
-            GameParticipant bot = new GameParticipant(roomId, null, true, "Бот " + i, entryFeeAmount);
+        for (int botNumber = 1; botNumber <= count; botNumber++) {
+            GameParticipant bot = new GameParticipant(roomId, null, true,
+                    String.format(BOT_NAME_FORMAT, botNumber), entryFeeAmount);
             bots.add(participantRepository.create(bot));
         }
         return bots;
@@ -64,7 +67,6 @@ public class BotServiceImpl implements BotService {
                 roomId, roundNumber, protectionMode, bots.size());
 
         for (GameParticipant bot : bots) {
-            // Each bot gets its own barrel selection to avoid identical play patterns
             List<Barrel> orderedBarrels = selectBarrels(barrels, barrelWeights, config.getMaxBarrelSelection(),
                     protectionMode);
 
@@ -87,7 +89,7 @@ public class BotServiceImpl implements BotService {
         if (protectionMode && barrelWeights != null && !barrelWeights.isEmpty()) {
             return barrels.stream()
                     .sorted(Comparator.comparing(
-                            b -> barrelWeights.getOrDefault(b.getId(), BigDecimal.ZERO),
+                            barrel -> barrelWeights.getOrDefault(barrel.getId(), BigDecimal.ZERO),
                             Comparator.reverseOrder()))
                     .limit(count)
                     .toList();

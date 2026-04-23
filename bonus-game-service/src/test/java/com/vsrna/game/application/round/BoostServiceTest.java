@@ -1,5 +1,6 @@
 package com.vsrna.game.application.round;
 
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.port.BalancePort;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.domain.exception.ApiException;
@@ -41,6 +42,7 @@ class BoostServiceTest {
     @Mock ParticipantRoundEntryRepository entryRepository;
     @Mock BalancePort balancePort;
     @Mock GameEventPort gameEventPort;
+    @Mock GameEventLogService gameEventLogService;
 
     @InjectMocks
     BoostService boostService;
@@ -142,7 +144,6 @@ class BoostServiceTest {
         when(participantRepository.get(any())).thenReturn(participant);
         when(roundResultRepository.get(any())).thenReturn(roundResult);
         when(entryRepository.find(any())).thenReturn(Optional.empty());
-        when(gameRoomRepository.update(any(), any())).thenReturn(room);
 
         boostService.purchaseBoost(roomId, userId, 1);
 

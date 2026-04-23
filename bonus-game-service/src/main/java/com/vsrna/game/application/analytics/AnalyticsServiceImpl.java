@@ -24,10 +24,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AnalyticsServiceImpl implements AnalyticsService {
 
+    private static final int DEFAULT_PERIOD_DAYS    = 30;
+    private static final int PERCENTAGE_SCALE       = 4;
+    private static final BigDecimal PERCENT_FACTOR  = BigDecimal.valueOf(100);
+
     private final GameHistoryRepository gameHistoryRepository;
     private final GameHistoryAnalyticsRepository analyticsRepository;
-
-    private static final int DEFAULT_PERIOD_DAYS = 30;
 
     private Instant resolveEffectiveTo(Instant to) {
         return to != null ? to : Instant.now();
@@ -120,14 +122,14 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     private GameAnalyticsPlayers calcPlayers(List<GameHistory> games, long realWins) {
         long uniqueWinners = games.stream()
-                .filter(g -> !g.isWinnerIsBot() && g.getWinnerUserId() != null)
+                .filter(game -> !game.isWinnerIsBot() && game.getWinnerUserId() != null)
                 .map(GameHistory::getWinnerUserId)
                 .distinct()
                 .count();
-        long gamesWithBoost = games.stream().filter(g -> g.getBoostUsedCount() > 0).count();
+        long gamesWithBoost = games.stream().filter(game -> game.getBoostUsedCount() > 0).count();
         double boostUsageRate = pct(gamesWithBoost, games.size());
         long realWinsWithBoost = games.stream()
-                .filter(g -> !g.isWinnerIsBot() && g.isWinnerUsedBoost())
+                .filter(game -> !game.isWinnerIsBot() && game.isWinnerUsedBoost())
                 .count();
         double winnerBoostRate = realWins > 0 ? pct(realWinsWithBoost, realWins) : 0.0;
         return new GameAnalyticsPlayers(uniqueWinners, boostUsageRate, winnerBoostRate);
@@ -137,8 +139,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         BigDecimal totalIn = realRevenue.add(boostRevenue);
         if (totalIn.compareTo(BigDecimal.ZERO) == 0) return 0.0;
         return totalIn.subtract(prizesAwarded)
-                .divide(totalIn, 4, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
+                .divide(totalIn, PERCENTAGE_SCALE, RoundingMode.HALF_UP)
+                .multiply(PERCENT_FACTOR)
                 .doubleValue();
     }
 
@@ -171,8 +173,10 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     private double pct(long part, long total) {
-        return total > 0 ? BigDecimal.valueOf(part)
-                .divide(BigDecimal.valueOf(total), 4, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100)).doubleValue() : 0.0;
+        if (total == 0) return 0.0;
+        return BigDecimal.valueOf(part)
+                .divide(BigDecimal.valueOf(total), PERCENTAGE_SCALE, RoundingMode.HALF_UP)
+                .multiply(PERCENT_FACTOR)
+                .doubleValue();
     }
 }

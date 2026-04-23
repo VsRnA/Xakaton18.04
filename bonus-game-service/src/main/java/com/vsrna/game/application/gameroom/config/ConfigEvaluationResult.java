@@ -1,4 +1,4 @@
-package com.vsrna.game.application.gameroom;
+package com.vsrna.game.application.gameroom.config;
 
 import java.math.BigDecimal;
 import java.util.List;

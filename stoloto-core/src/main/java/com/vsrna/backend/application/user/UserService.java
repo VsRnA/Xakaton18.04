@@ -1,18 +1,17 @@
 package com.vsrna.backend.application.user;
 
 import com.vsrna.backend.domain.user.User;
-import com.vsrna.backend.presentation.dto.user.UserDto;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface UserService {
 
-    User createUser(UserDto.CreateUserRequest request);
+    User createUser(CreateUserRequest request);
 
     User getUser(UUID guid);
 
-    User updateUser(UUID guid, UserDto.UpdateUserRequest request);
+    User updateUser(UUID guid, UpdateUserRequest request);
 
     void deleteUser(UUID guid);
 

@@ -1,4 +1,4 @@
-package com.vsrna.game.application.round;
+package com.vsrna.game.application.round.scoring;
 
 import com.vsrna.game.domain.round.ParticipantBarrelSelection;
 import com.vsrna.game.domain.round.ParticipantRoundEntry;
@@ -17,13 +17,12 @@ public final class RoundScoringUtils {
 
     private RoundScoringUtils() {}
 
+    public static final String WIN_CRITERIA_SCORE     = "SCORE";
+    public static final String WIN_CRITERIA_DIRECT    = "DIRECT";
+    public static final String WIN_CRITERIA_TIMESTAMP = "TIMESTAMP_TIEBREAK";
+
     public record BoostEffect(UUID barrelId, BigDecimal originalWeight, BigDecimal boostedWeight) {}
 
-    /**
-     * Вычисляет эффект буста для набора выбранных бочек:
-     * 1. Если есть отрицательные веса — меняет знак наибольшей по модулю отрицательной бочки
-     * 2. Если все веса положительные — удваивает минимальную положительную бочку
-     */
     public static BoostEffect computeBoostEffect(List<ParticipantBarrelSelection> selections,
                                                   Map<UUID, BigDecimal> barrelWeights) {
         if (selections.isEmpty()) return null;
@@ -34,18 +33,18 @@ public final class RoundScoringUtils {
         ParticipantBarrelSelection minPositiveTarget = null;
         BigDecimal minPositiveWeight = null;
 
-        for (ParticipantBarrelSelection sel : selections) {
-            BigDecimal w = barrelWeights.get(sel.getBarrelId());
-            if (w == null) continue;
-            if (w.signum() < 0) {
-                if (mostNegativeWeight == null || w.compareTo(mostNegativeWeight) < 0) {
-                    mostNegativeWeight = w;
-                    mostNegativeTarget = sel;
+        for (ParticipantBarrelSelection selection : selections) {
+            BigDecimal weight = barrelWeights.get(selection.getBarrelId());
+            if (weight == null) continue;
+            if (weight.signum() < 0) {
+                if (mostNegativeWeight == null || weight.compareTo(mostNegativeWeight) < 0) {
+                    mostNegativeWeight = weight;
+                    mostNegativeTarget = selection;
                 }
-            } else if (w.signum() > 0) {
-                if (minPositiveWeight == null || w.compareTo(minPositiveWeight) < 0) {
-                    minPositiveWeight = w;
-                    minPositiveTarget = sel;
+            } else if (weight.signum() > 0) {
+                if (minPositiveWeight == null || weight.compareTo(minPositiveWeight) < 0) {
+                    minPositiveWeight = weight;
+                    minPositiveTarget = selection;
                 }
             }
         }
@@ -66,13 +65,13 @@ public final class RoundScoringUtils {
                 ? computeBoostEffect(selections, barrelWeights) : null;
 
         BigDecimal score = BigDecimal.ZERO;
-        for (ParticipantBarrelSelection sel : selections) {
-            BigDecimal barrelWeight = barrelWeights.get(sel.getBarrelId());
+        for (ParticipantBarrelSelection selection : selections) {
+            BigDecimal barrelWeight = barrelWeights.get(selection.getBarrelId());
             if (barrelWeight == null) {
-                log.warn("No weight found for barrelId={}, skipping in score calculation", sel.getBarrelId());
+                log.warn("No weight found for barrelId={}, skipping in score calculation", selection.getBarrelId());
                 continue;
             }
-            if (boostEffect != null && sel.getBarrelId().equals(boostEffect.barrelId())) {
+            if (boostEffect != null && selection.getBarrelId().equals(boostEffect.barrelId())) {
                 score = score.add(boostEffect.boostedWeight());
             } else {
                 score = score.add(barrelWeight);
@@ -82,16 +81,13 @@ public final class RoundScoringUtils {
     }
 
     public static String determineWinCriteria(List<ParticipantRoundEntry> sorted) {
-        if (sorted.size() < 2) return "SCORE";
+        if (sorted.size() < 2) return WIN_CRITERIA_SCORE;
         ParticipantRoundEntry first = sorted.get(0);
         ParticipantRoundEntry second = sorted.get(1);
         if (first.getTotalScore() != null && second.getTotalScore() != null
                 && first.getTotalScore().compareTo(second.getTotalScore()) != 0) {
-            return "SCORE";
+            return WIN_CRITERIA_SCORE;
         }
-        if (first.getSelectionCount() != second.getSelectionCount()) {
-            return "SELECTION_COUNT_TIEBREAK";
-        }
-        return "TIMESTAMP_TIEBREAK";
+        return WIN_CRITERIA_TIMESTAMP;
     }
 }

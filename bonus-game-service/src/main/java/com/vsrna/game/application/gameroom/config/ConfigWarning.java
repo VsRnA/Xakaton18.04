@@ -1,4 +1,4 @@
-package com.vsrna.game.application.gameroom;
+package com.vsrna.game.application.gameroom.config;
 
 public record ConfigWarning(String code, String severity, String message) {
 

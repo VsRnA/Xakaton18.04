@@ -83,7 +83,7 @@ public class GameRoomRepositoryAdapter implements GameRoomRepository {
 
     @Override
     public void delete(GameRoomQuery query) {
-        findJpaOptional(query).ifPresent(e -> jpa.deleteById(e.getId()));
+        findJpaOptional(query).ifPresent(entity -> jpa.deleteById(entity.getId()));
     }
 
     private GameRoomJpa findJpa(GameRoomQuery query) {

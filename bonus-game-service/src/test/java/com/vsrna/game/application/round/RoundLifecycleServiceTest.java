@@ -1,6 +1,7 @@
 package com.vsrna.game.application.round;
 
 import com.vsrna.game.application.bot.BotService;
+import com.vsrna.game.application.gameevent.GameEventLogService;
 import com.vsrna.game.application.port.GameEventPort;
 import com.vsrna.game.application.port.GameNotifierPort;
 import com.vsrna.game.application.port.GameSchedulerPort;
@@ -11,7 +12,7 @@ import com.vsrna.game.domain.gameroom.GameRoom;
 import com.vsrna.game.domain.gameroom.GameRoomPatch;
 import com.vsrna.game.domain.gameroom.GameRoomRepository;
 import com.vsrna.game.domain.gameroom.GameRoomStatus;
-import com.vsrna.game.domain.history.GameHistoryRepository;
+import com.vsrna.game.domain.history.GameHistoryAnalyticsRepository;
 import com.vsrna.game.domain.participant.GameParticipant;
 import com.vsrna.game.domain.participant.GameParticipantPatch;
 import com.vsrna.game.domain.participant.GameParticipantRepository;
@@ -29,11 +30,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -50,9 +53,10 @@ class RoundLifecycleServiceTest {
     @Mock GameSchedulerPort schedulerPort;
     @Mock GameNotifierPort notifierPort;
     @Mock PrizeService prizeService;
-    @Mock GameHistoryRepository gameHistoryRepository;
+    @Mock GameHistoryAnalyticsRepository gameHistoryAnalyticsRepository;
     @Mock BotService botService;
     @Mock GameEventPort gameEventPort;
+    @Mock GameEventLogService gameEventLogService;
 
     @InjectMocks
     RoundLifecycleService service;
@@ -156,10 +160,11 @@ class RoundLifecycleServiceTest {
         when(roundResultRepository.update(any(), any())).thenReturn(null);
         when(barrelRepository.list(any())).thenReturn(List.of());
         when(gameRoomRepository.update(any(), any())).thenReturn(room);
+        when(schedulerPort.scheduleRoundEnd(any(), anyInt())).thenReturn(Instant.now().plusSeconds(30));
 
         service.markFinalistReady(roomId, userId1);
 
-        verify(schedulerPort).cancel(roomId, "start-round2");
+        verify(schedulerPort).cancel(roomId, com.vsrna.game.application.port.GamePhase.START_ROUND2);
         verify(schedulerPort).scheduleRoundEnd(roomId, 2);
         verify(notifierPort).publishRoundEvent(eq(roomId), any());
     }
@@ -192,6 +197,7 @@ class RoundLifecycleServiceTest {
         when(roundResultRepository.update(any(), any())).thenReturn(null);
         when(barrelRepository.list(any())).thenReturn(List.of());
         when(gameRoomRepository.update(any(), any())).thenReturn(room);
+        when(schedulerPort.scheduleRoundEnd(any(), anyInt())).thenReturn(Instant.now().plusSeconds(30));
 
         service.startRound2AfterTimeout(roomId);
 
@@ -226,6 +232,7 @@ class RoundLifecycleServiceTest {
         when(roundResultRepository.update(any(), any())).thenReturn(null);
         when(barrelRepository.list(any())).thenReturn(List.of());
         when(gameRoomRepository.update(any(), any())).thenReturn(GameRoomFixtures.waitingRoom(roomId));
+        when(schedulerPort.scheduleRoundEnd(any(), anyInt())).thenReturn(Instant.now().plusSeconds(30));
 
         // Call advanceToFinal via the private method through finalizeRound would be complex;
         // test it via direct invocation using reflection or test the observable behaviour:

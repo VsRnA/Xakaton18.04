@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-public record CreateGameRoomCommand(
+public record CreateGameRoomRequest(
         UUID createdByUserId,
         int maxPlayers,
         BigDecimal entryFeeAmount,

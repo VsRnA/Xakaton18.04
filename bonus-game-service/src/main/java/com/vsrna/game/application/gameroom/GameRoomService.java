@@ -1,15 +1,15 @@
 package com.vsrna.game.application.gameroom;
 
+import com.vsrna.game.application.gameroom.config.ConfigEvaluationResult;
 import com.vsrna.game.domain.gameroom.GameRoomQuery;
 import com.vsrna.game.domain.participant.GameParticipant;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-// NextGameOption, ConfigEvaluationResult are in the same package
 
 public interface GameRoomService {
-    GameRoomDetails createRoom(CreateGameRoomCommand command);
+    GameRoomDetails createRoom(CreateGameRoomRequest request);
     GameRoomDetails joinRoom(UUID roomId, UUID userId, String displayName);
     void fillWithBots(UUID roomId);
     List<GameRoomDetails> listRooms(GameRoomQuery query);
@@ -20,5 +20,5 @@ public interface GameRoomService {
     List<NextGameOption> nextGame(UUID finishedRoomId, UUID userId);
     void cancelRoom(UUID roomId, UUID adminUserId);
     void openScheduledRoom(UUID roomId);
-    ConfigEvaluationResult evaluateConfig(CreateGameRoomCommand command);
+    ConfigEvaluationResult evaluateConfig(CreateGameRoomRequest request);
 }

@@ -1,5 +1,7 @@
 package com.vsrna.backend.presentation.controller;
 
+import com.vsrna.backend.application.user.CreateUserRequest;
+import com.vsrna.backend.application.user.UpdateUserRequest;
 import com.vsrna.backend.application.user.UserService;
 import com.vsrna.backend.domain.exception.ApiException;
 import com.vsrna.backend.presentation.dto.user.UserDto;
@@ -40,7 +42,8 @@ public class UserController {
     public UserDto.UserResponse createUser(@Valid @RequestBody UserDto.CreateUserRequest request,
                                            HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
-        return UserDto.UserResponse.from(userService.createUser(request));
+        return UserDto.UserResponse.from(userService.createUser(
+                new CreateUserRequest(request.phone(), request.password(), request.role(), request.username())));
     }
 
     @Operation(summary = "Получить список пользователей")
@@ -87,7 +90,9 @@ public class UserController {
                                            @Valid @RequestBody UserDto.UpdateUserRequest request,
                                            HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
-        return UserDto.UserResponse.from(userService.updateUser(guid, request));
+        return UserDto.UserResponse.from(userService.updateUser(guid,
+                new UpdateUserRequest(request.username(), request.password(), request.name(),
+                        request.lastName(), request.patronymicName(), request.role())));
     }
 
     @Operation(summary = "Удалить пользователя")

@@ -1,7 +1,7 @@
 package com.vsrna.game.presentation.controller;
 
-import com.vsrna.game.application.gameroom.ConfigEvaluationResult;
-import com.vsrna.game.application.gameroom.CreateGameRoomCommand;
+import com.vsrna.game.application.gameroom.config.ConfigEvaluationResult;
+import com.vsrna.game.application.gameroom.CreateGameRoomRequest;
 import com.vsrna.game.application.gameroom.GameRoomDetails;
 import com.vsrna.game.application.gameroom.GameRoomService;
 import com.vsrna.game.application.gameroom.NextGameOption;
@@ -53,7 +53,7 @@ public class GameRoomController {
             @Valid @RequestBody GameRoomDto.CreateGameRoomRequest request,
             HttpServletRequest httpRequest) {
         UUID userId = requireAdminAuth(httpRequest);
-        CreateGameRoomCommand command = new CreateGameRoomCommand(
+        CreateGameRoomRequest command = new CreateGameRoomRequest(
                 userId,
                 request.maxPlayers(),
                 request.entryFeeAmount(),
@@ -68,10 +68,10 @@ public class GameRoomController {
         if (!request.confirmWarnings()) {
             ConfigEvaluationResult evaluation = gameRoomService.evaluateConfig(command);
             boolean hasErrors = evaluation.warnings().stream()
-                    .anyMatch(w -> "ERROR".equals(w.severity()));
+                    .anyMatch(warning -> "ERROR".equals(warning.severity()));
             if (hasErrors) {
                 List<GameRoomDto.ConfigWarningResponse> warnings = evaluation.warnings().stream()
-                        .map(w -> new GameRoomDto.ConfigWarningResponse(w.code(), w.severity(), w.message()))
+                        .map(warning -> new GameRoomDto.ConfigWarningResponse(warning.code(), warning.severity(), warning.message()))
                         .toList();
                 throw ApiException.unprocessable(GameErrorMessages.ROOM_CONFIG_HAS_ERRORS,
                         java.util.Map.of("warnings", warnings));
@@ -136,7 +136,7 @@ public class GameRoomController {
             @Valid @RequestBody GameRoomDto.CreateGameRoomRequest request,
             HttpServletRequest httpRequest) {
         requireAdminAuth(httpRequest);
-        CreateGameRoomCommand command = new CreateGameRoomCommand(
+        CreateGameRoomRequest command = new CreateGameRoomRequest(
                 null, request.maxPlayers(), request.entryFeeAmount(),
                 request.winnerPayoutPercentage(), request.boostCostAmount(),
                 request.boostEnabled(), request.maxBarrelSelection(),
@@ -144,7 +144,7 @@ public class GameRoomController {
         );
         ConfigEvaluationResult result = gameRoomService.evaluateConfig(command);
         List<GameRoomDto.ConfigWarningResponse> warnings = result.warnings().stream()
-                .map(w -> new GameRoomDto.ConfigWarningResponse(w.code(), w.severity(), w.message()))
+                .map(warning -> new GameRoomDto.ConfigWarningResponse(warning.code(), warning.severity(), warning.message()))
                 .toList();
         return new GameRoomDto.ConfigEvaluationResponse(
                 result.projectedPrizePool(),
@@ -209,11 +209,11 @@ public class GameRoomController {
         int totalPlayers = gameRoomService.getRoom(roomId).room().getCurrentPlayerCount();
         double probPct = totalPlayers > 0 ? 100.0 / totalPlayers : 100.0;
         return gameRoomService.listParticipants(roomId).stream()
-                .map(p -> new GameRoomDto.ParticipantResponse(
-                        p.getId(),
-                        p.getDisplayName(),
-                        p.isBot(),
-                        p.getStatus(),
+                .map(participant -> new GameRoomDto.ParticipantResponse(
+                        participant.getId(),
+                        participant.getDisplayName(),
+                        participant.isBot(),
+                        participant.getStatus(),
                         probPct
                 ))
                 .toList();
@@ -227,15 +227,15 @@ public class GameRoomController {
         UUID userId = requireAuth(httpRequest);
         List<NextGameOption> options = gameRoomService.nextGame(roomId, userId);
         return options.stream()
-                .map(o -> new GameRoomDto.NextGameOption(o.type(), toResponse(o.room())))
+                .map(option -> new GameRoomDto.NextGameOption(option.type(), toResponse(option.room())))
                 .toList();
     }
 
     private GameRoomDto.GameRoomResponse toResponse(GameRoomDetails details) {
         Instant waitTimerExpiresAt = details.room().getWaitTimerExpiresAt();
         List<GameRoomDto.RoomParticipantPreview> participants = details.participants().stream()
-                .filter(p -> !p.isBot())
-                .map(p -> new GameRoomDto.RoomParticipantPreview(p.getDisplayName()))
+                .filter(participant -> !participant.isBot())
+                .map(participant -> new GameRoomDto.RoomParticipantPreview(participant.getDisplayName()))
                 .toList();
         return new GameRoomDto.GameRoomResponse(
                 details.room().getId(),

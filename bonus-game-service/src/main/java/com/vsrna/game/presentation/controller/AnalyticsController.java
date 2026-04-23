@@ -65,12 +65,12 @@ public class AnalyticsController {
 
         List<GameHistoryEntry> games = analyticsService.listGames(from, to, page, size);
         List<AnalyticsDto.AdminGameRecord> records = games.stream()
-                .map(g -> new AnalyticsDto.AdminGameRecord(
-                        g.gameRoomId(), g.completedAt(), g.winnerUserId(),
-                        g.winnerIsBot(), g.entryFeeAmount(), g.realPlayersRevenue(),
-                        g.prizeAwarded(), g.systemBalance(), g.winCriteria(),
-                        g.realPlayersCount(), g.botCount(),
-                        g.boostAvailable(), g.boostUsedCount(), g.boostRevenue()))
+                .map(game -> new AnalyticsDto.AdminGameRecord(
+                        game.gameRoomId(), game.completedAt(), game.winnerUserId(),
+                        game.winnerIsBot(), game.entryFeeAmount(), game.realPlayersRevenue(),
+                        game.prizeAwarded(), game.systemBalance(), game.winCriteria(),
+                        game.realPlayersCount(), game.botCount(),
+                        game.boostAvailable(), game.boostUsedCount(), game.boostRevenue()))
                 .toList();
         return ResponseEntity.ok(new AnalyticsDto.AdminGamesResponse(records, records.size()));
     }

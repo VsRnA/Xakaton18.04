@@ -1,4 +1,4 @@
-package com.vsrna.game.application.round;
+package com.vsrna.game.application.round.scoring;
 
 import java.math.BigDecimal;
 

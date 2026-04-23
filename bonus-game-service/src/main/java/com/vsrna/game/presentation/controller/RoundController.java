@@ -1,7 +1,7 @@
 package com.vsrna.game.presentation.controller;
 
 import com.vsrna.game.application.gameevent.GameEventLogService;
-import com.vsrna.game.application.round.GameHistoryDetails;
+import com.vsrna.game.application.round.history.GameHistoryDetails;
 import com.vsrna.game.application.round.RoundResultDetails;
 import com.vsrna.game.application.round.RoundService;
 import com.vsrna.game.domain.exception.ApiException;
@@ -36,12 +36,12 @@ public class RoundController {
             summary = "Получить перемешанные бочки раунда",
             description = "Возвращает бочки раунда в порядке, перемешанном по userId + номеру раунда (Provably Fair shuffle). Веса равны null до завершения раунда."
     )
-    @GetMapping("/rounds/{n}/barrels")
+    @GetMapping("/rounds/{roundNumber}/barrels")
     public List<RoundDto.BarrelResponse> getBarrels(@PathVariable UUID roomId,
-                                                     @PathVariable int n,
+                                                     @PathVariable int roundNumber,
                                                      HttpServletRequest httpRequest) {
         UUID userId = requireAuth(httpRequest);
-        return roundService.getShuffledBarrels(roomId, userId, n).stream()
+        return roundService.getShuffledBarrels(roomId, userId, roundNumber).stream()
                 .map(barrel -> new RoundDto.BarrelResponse(barrel.getId(), barrel.getBarrelCode(), barrel.getWeight()))
                 .toList();
     }
@@ -58,13 +58,13 @@ public class RoundController {
                     Можно купить только один раз за игру. Списание баланса выполняется асинхронно через Kafka.
                     """
     )
-    @PostMapping("/rounds/{n}/boost")
+    @PostMapping("/rounds/{roundNumber}/boost")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void purchaseBoost(@PathVariable UUID roomId,
-                              @PathVariable int n,
+                              @PathVariable int roundNumber,
                               HttpServletRequest httpRequest) {
         UUID userId = requireAuth(httpRequest);
-        roundService.purchaseBoost(roomId, userId, n);
+        roundService.purchaseBoost(roomId, userId, roundNumber);
     }
 
     @Operation(
@@ -86,23 +86,23 @@ public class RoundController {
                     | `/topic/room/{roomId}/game` | `FINALISTS_ANNOUNCED` (конец раунда 1) или `GAME_FINISHED` (конец раунда 2) | |
                     """
     )
-    @PostMapping("/rounds/{n}/selection")
+    @PostMapping("/rounds/{roundNumber}/selection")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void submitSelection(@PathVariable UUID roomId,
-                                @PathVariable int n,
+                                @PathVariable int roundNumber,
                                 @Valid @RequestBody RoundDto.SubmitSelectionRequest request,
                                 HttpServletRequest httpRequest) {
         UUID userId = requireAuth(httpRequest);
-        roundService.submitSelection(roomId, userId, n, request.barrelIds(), Instant.now());
+        roundService.submitSelection(roomId, userId, roundNumber, request.barrelIds(), Instant.now());
     }
 
     @Operation(summary = "Результат раунда")
-    @GetMapping("/rounds/{n}/result")
+    @GetMapping("/rounds/{roundNumber}/result")
     public RoundDto.RoundResultResponse getRoundResult(@PathVariable UUID roomId,
-                                                        @PathVariable int n,
+                                                        @PathVariable int roundNumber,
                                                         HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
-        RoundResultDetails details = roundService.getRoundResult(roomId, n);
+        RoundResultDetails details = roundService.getRoundResult(roomId, roundNumber);
 
         List<RoundDto.ParticipantScoreResponse> scores = details.scores().stream()
                 .map(score -> new RoundDto.ParticipantScoreResponse(
@@ -110,7 +110,7 @@ public class RoundController {
                         score.selectionCount(), score.rank()))
                 .toList();
 
-        return new RoundDto.RoundResultResponse(n, details.roundResult().getSeedHash(),
+        return new RoundDto.RoundResultResponse(roundNumber, details.roundResult().getSeedHash(),
                 details.roundResult().getRawSeed(), scores, details.winnerId());
     }
 
@@ -143,12 +143,12 @@ public class RoundController {
                     Этот эндпоинт возвращает оба значения и результат проверки.
                     """
     )
-    @GetMapping("/rounds/{n}/verify")
+    @GetMapping("/rounds/{roundNumber}/verify")
     public ResponseEntity<RoundDto.VerifyRoundResponse> verifyRound(@PathVariable UUID roomId,
-                                                                      @PathVariable int n,
+                                                                      @PathVariable int roundNumber,
                                                                       HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
-        RoundResultDetails details = roundService.getRoundResult(roomId, n);
+        RoundResultDetails details = roundService.getRoundResult(roomId, roundNumber);
         String seedHash = details.roundResult().getSeedHash();
         String rawSeed = details.roundResult().getRawSeed();
         boolean valid = seedHash != null && rawSeed != null
@@ -161,7 +161,7 @@ public class RoundController {
             byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
                     .digest(java.util.HexFormat.of().parseHex(input));
             return java.util.HexFormat.of().formatHex(hash);
-        } catch (Exception e) {
+        } catch (Exception ex) {
             return "";
         }
     }
@@ -173,18 +173,18 @@ public class RoundController {
                                                               HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
         GameHistoryDetails details = roundService.getGameHistoryDetails(roomId);
-        GameHistory h = details.history();
+        GameHistory history = details.history();
         List<RoundDto.ParticipantHistoryEntry> participants = details.participants().stream()
-                .map(p -> new RoundDto.ParticipantHistoryEntry(
-                        p.participantId(), p.userId(), p.isBot(), p.displayName(),
-                        p.boostPurchased(), p.totalScore(), p.rank(), p.isWinner()))
+                .map(participant -> new RoundDto.ParticipantHistoryEntry(
+                        participant.participantId(), participant.userId(), participant.isBot(), participant.displayName(),
+                        participant.boostPurchased(), participant.totalScore(), participant.rank(), participant.isWinner()))
                 .toList();
         return new RoundDto.GameHistoryDetailResponse(
-                h.getGameRoomId(), h.getWinnerUserId(), h.isWinnerIsBot(),
-                h.getEntryFeeAmount(), h.getRealPlayersRevenue(), h.getPrizeAwarded(),
-                h.getSystemBalance(), h.getCompletedAt(), h.getWinCriteria(),
-                h.getRealPlayersCount(), h.getBotCount(),
-                h.isBoostAvailable(), h.getBoostUsedCount(), h.getBoostRevenue(),
+                history.getGameRoomId(), history.getWinnerUserId(), history.isWinnerIsBot(),
+                history.getEntryFeeAmount(), history.getRealPlayersRevenue(), history.getPrizeAwarded(),
+                history.getSystemBalance(), history.getCompletedAt(), history.getWinCriteria(),
+                history.getRealPlayersCount(), history.getBotCount(),
+                history.isBoostAvailable(), history.getBoostUsedCount(), history.getBoostRevenue(),
                 participants
         );
     }
@@ -203,8 +203,8 @@ public class RoundController {
                                                                HttpServletRequest httpRequest) {
         requireAuth(httpRequest);
         return gameEventLogService.getEvents(roomId).stream()
-                .map(e -> new GameEventDto.GameEventResponse(e.getId(), e.getRoomId(),
-                        e.getEventType(), e.getDetails(), e.getOccurredAt()))
+                .map(event -> new GameEventDto.GameEventResponse(event.getId(), event.getRoomId(),
+                        event.getEventType(), event.getDetails(), event.getOccurredAt()))
                 .toList();
     }
 

@@ -1,4 +1,4 @@
-package com.vsrna.game.application.round;
+package com.vsrna.game.application.round.history;
 
 import java.math.BigDecimal;
 import java.util.UUID;
